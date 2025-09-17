@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STKCollege - Facilitator Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+    <link rel="stylesheet" href="facilitator.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">
+            <div class="brand-logo">STK</div>
+            <h1>STKCollege</h1>
+        </div>
+        
+        <div class="user-profile">
+            <div class="profile-image">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="profile-name" id="userName">Facilitator Name</div>
+            <div class="profile-role">Facilitator</div>
+            <div class="profile-actions">
+                <button class="profile-btn" id="viewProfileBtn"><i class="fas fa-eye"></i> View</button>
+                <button class="profile-btn" id="editProfileBtn"><i class="fas fa-edit"></i> Edit</button>
+            </div>
+        </div>
+        
+        <div class="nav-menu">
+            <div class="nav-item active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" data-page="courses">
+                <i class="fas fa-book-open"></i>
+                <span>Courses</span>
+            </div>
+            <div class="nav-item" data-page="tests">
+                <i class="fas fa-file-alt"></i>
+                <span>Tests</span>
+            </div>
+            <div class="nav-item" data-page="analytics">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </div>
+            <div class="nav-item" data-page="upload">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span>Upload Content</span>
+            </div>
+            <div class="nav-item" data-page="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Calendar</span>
+            </div>
+            <div class="nav-item" data-page="messages">
+                <i class="fas fa-comments"></i>
+                <span>Messages</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <button class="btn-logout" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search your courses">
+            </div>
+            <div class="user-menu">
+                <div class="notification-bell">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge">3</span>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="topUserName">Facilitator Name</div>
+                    <div class="user-role">Facilitator</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content">
+            <!-- Dashboard Page -->
+            <div class="page-content active" id="dashboard-page">
+                <h2 class="page-title">Dashboard</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">12</div>
+                        <div class="stat-title">Active Courses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">48</div>
+                        <div class="stat-title">Tests Created</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">327</div>
+                        <div class="stat-title">Students Enrolled</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">92%</div>
+                        <div class="stat-title">Average Completion</div>
+                    </div>
+                </div>
+                
+                <div class="courses-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Your Courses</h3>
+                        <button class="btn-primary" id="addCourseBtn">
+                            <i class="fas fa-plus"></i> Add New Course
+                        </button>
+                    </div>
+                    
+                    <div class="courses-grid">
+                        <div class="course-card">
+                            <div class="course-code">ADRAM02</div>
+                            <h4 class="course-name">ADVANCED DATABASE IV</h4>
+                            <span class="course-status">Open | Dynamic Injection</span>
+                        </div>
+                        <div class="course-card">
+                            <div class="course-code">APR6d32</div>
+                            <h4 class="course-name">ADVANCED PROGRAMMING IV</h4>
+                            <span class="course-status">Open | Endline Balance</span>
+                        </div>
+                        <div class="course-card">
+                            <div class="course-code">BBS5101</div>
+                            <h4 class="course-name">BB Support for Students</h4>
+                            <span class="course-status">Open - Start now</span>
+                        </div>
+                        <div class="course-card">
+                            <div class="course-code">Traim06A1</div>
+                            <h4 class="course-name">Digital Literacy</h4>
+                            <span class="course-status">Open - Start now</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Courses Page -->
+            <div class="page-content" id="courses-page">
+                <h2 class="page-title">Course Management</h2>
+                
+                <div class="section-header">
+                    <h3 class="section-title">All Courses</h3>
+                    <button class="btn-primary" id="createCourseBtn">
+                        <i class="fas fa-plus"></i> Create New Course
+                    </button>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Status</th>
+                            <th>Enrollments</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ADRAM02</td>
+                            <td>ADVANCED DATABASE IV</td>
+                            <td>Open</td>
+                            <td>42</td>
+                            <td>
+                                <button class="action-btn"><i class="fas fa-edit"></i></button>
+                                <button class="action-btn"><i class="fas fa-trash btn-danger"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>APR6d32</td>
+                            <td>ADVANCED PROGRAMMING IV</td>
+                            <td>Open</td>
+                            <td>38</td>
+                            <td>
+                                <button class="action-btn"><i class="fas fa-edit"></i></button>
+                                <button class="action-btn"><i class="fas fa-trash btn-danger"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>BBS5101</td>
+                            <td>BB Support for Students</td>
+                            <td>Open</td>
+                            <td>105</td>
+                            <td>
+                                <button class="action-btn"><i class="fas fa-edit"></i></button>
+                                <button class="action-btn"><i class="fas fa-trash btn-danger"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Tests Page -->
+            <div class="page-content" id="tests-page">
+                <h2 class="page-title">Test Management</h2>
+                
+                <div class="section-header">
+                    <h3 class="section-title">All Tests</h3>
+                    <button class="btn-primary" id="createTestBtn">
+                        <i class="fas fa-plus"></i> Create New Test
+                    </button>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Test Name</th>
+                            <th>Course</th>
+                            <th>Questions</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Database Midterm</td>
+                            <td>ADVANCED DATABASE IV</td>
+                            <td>25</td>
+                            <td>60 mins</td>
+                            <td>Active</td>
+                            <td>
+                                <button class="action-btn"><i class="fas fa-edit"></i></button>
+                                <button class="action-btn"><i class="fas fa-trash btn-danger"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Programming Assignment</td>
+                            <td>ADVANCED PROGRAMMING IV</td>
+                            <td>10</td>
+                            <td>120 mins</td>
+                            <td>Draft</td>
+                            <td>
+                                <button class="action-btn"><i class="fas fa-edit"></i></button>
+                                <button class="action-btn"><i class="fas fa-trash btn-danger"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Analytics Page -->
+            <div class="page-content" id="analytics-page">
+                <h2 class="page-title">Analytics & Reports</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">327</div>
+                        <div class="stat-title">Total Students</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">92%</div>
+                        <div class="stat-title">Average Completion Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">76%</div>
+                        <div class="stat-title">Average Test Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">18</div>
+                        <div class="stat-title">Active Tests</div>
+                    </div>
+                </div>
+                
+                <div class="courses-section">
+                    <h3 class="section-title">Course Performance</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Course Name</th>
+                                <th>Enrollments</th>
+                                <th>Completion Rate</th>
+                                <th>Average Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ADVANCED DATABASE IV</td>
+                                <td>42</td>
+                                <td>95%</td>
+                                <td>82%</td>
+                            </tr>
+                            <tr>
+                                <td>ADVANCED PROGRAMMING IV</td>
+                                <td>38</td>
+                                <td>89%</td>
+                                <td>78%</td>
+                            </tr>
+                            <tr>
+                                <td>BB Support for Students</td>
+                                <td>105</td>
+                                <td>97%</td>
+                                <td>91%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Upload Page -->
+            <div class="page-content" id="upload-page">
+                <h2 class="page-title">Upload Course Content</h2>
+                
+                <div class="courses-section">
+                    <div class="form-group">
+                        <label for="courseSelect">Select Course</label>
+                        <select id="courseSelect">
+                            <option value="">-- Select a Course --</option>
+                            <option value="ADRAM02">ADVANCED DATABASE IV</option>
+                            <option value="APR6d32">ADVANCED PROGRAMMING IV</option>
+                            <option value="BBS5101">BB Support for Students</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contentTitle">Content Title</label>
+                        <input type="text" id="contentTitle" placeholder="Enter content title">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contentType">Content Type</label>
+                        <select id="contentType">
+                            <option value="lecture">Lecture Notes</option>
+                            <option value="video">Video</option>
+                            <option value="assignment">Assignment</option>
+                            <option value="reading">Reading Material</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contentFile">Upload File</label>
+                        <input type="file" id="contentFile">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contentDescription">Description</label>
+                        <textarea id="contentDescription" rows="4" placeholder="Enter content description"></textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn-secondary">Cancel</button>
+                        <button class="btn-primary">Upload Content</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Course Modal -->
+    <div class="modal" id="courseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Course</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="courseCode">Course Code</label>
+                <input type="text" id="courseCode" placeholder="Enter course code">
+            </div>
+            <div class="form-group">
+                <label for="courseName">Course Name</label>
+                <input type="text" id="courseName" placeholder="Enter course name">
+            </div>
+            <div class="form-group">
+                <label for="courseDescription">Description</label>
+                <textarea id="courseDescription" rows="3" placeholder="Enter course description"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="courseStatus">Status</label>
+                <select id="courseStatus">
+                    <option value="open">Open</option>
+                    <option value="closed">Closed</option>
+                    <option value="draft">Draft</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button class="btn-secondary" id="closeCourseModal">Cancel</button>
+                <button class="btn-primary">Create Course</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Test Modal -->
+    <div class="modal" id="testModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Test</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="testCourse">Course</label>
+                <select id="testCourse">
+                    <option value="">-- Select a Course --</option>
+                    <option value="ADRAM02">ADVANCED DATABASE IV</option>
+                    <option value="APR6d32">ADVANCED PROGRAMMING IV</option>
+                    <option value="BBS5101">BB Support for Students</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="testName">Test Name</label>
+                <input type="text" id="testName" placeholder="Enter test name">
+            </div>
+            <div class="form-group">
+                <label for="testDuration">Duration (minutes)</label>
+                <input type="number" id="testDuration" placeholder="Enter duration in minutes">
+            </div>
+            <div class="form-group">
+                <label for="testQuestions">Number of Questions</label>
+                <input type="number" id="testQuestions" placeholder="Enter number of questions">
+            </div>
+            <div class="form-group">
+                <label for="testStatus">Status</label>
+                <select id="testStatus">
+                    <option value="draft">Draft</option>
+                    <option value="active">Active</option>
+                    <option value="closed">Closed</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button class="btn-secondary" id="closeTestModal">Cancel</button>
+                <button class="btn-primary">Create Test</button>
+            </div>
+        </div>
+    </div>
+    <script src="facilitator.js"></script>
+</body>
+</html>

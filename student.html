@@ -1,0 +1,53 @@
+<!-- student/student.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STKCollege Online testing</title>
+    <link rel="stylesheet" href="student.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Student Dashboard</div>
+        <button id="logoutBtn" class="btn-logout">Logout</button>
+    </nav>
+    
+    <div class="container">
+        <div class="welcome-card">
+            <h1 id="welcomeMessage">Welcome, Student!</h1>
+            <p class="user-email" id="userEmail"></p>
+        </div>
+        
+        <div class="courses-section">
+            <h2>Available Courses</h2>
+            <div class="courses-grid" id="coursesGrid">
+                <!-- Courses will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="stats-section">
+            <h2>Your Progress</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Tests Taken</h3>
+                    <p class="stat-number">8</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Average Score</h3>
+                    <p class="stat-number">85%</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Completed Courses</h3>
+                    <p class="stat-number">3</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+    <script src="student.js"></script>
+</body>
+</html>
