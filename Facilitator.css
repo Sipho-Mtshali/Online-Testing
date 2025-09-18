@@ -1,4 +1,4 @@
-        * {
+       * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -226,6 +226,100 @@
             color: #2c3e50;
             font-size: 1.9rem;
             font-weight: 700;
+        }
+
+        /* Profile Page */
+        .profile-page {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .profile-title {
+            font-size: 1.8rem;
+            color: #2c3e50;
+            font-weight: 700;
+        }
+
+        .student-id {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-top: 0.5rem;
+        }
+
+        .profile-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #3498db;
+            font-weight: 600;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .info-value {
+            color: #555;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .setting-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .search-box {
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            background: #f0f0f0;
+            border-radius: 5px;
+            padding: 0.5rem 1rem;
+            width: 100%;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            flex: 1;
+            margin-left: 0.5rem;
+            font-size: 1rem;
         }
 
         /* Dashboard Cards */
@@ -503,6 +597,10 @@
             .courses-grid {
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             }
+            
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 768px) {
@@ -549,4 +647,358 @@
             .sidebar-footer {
                 display: none;
             }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
         }
+        /* Add these styles to your existing Facilitator.css file */
+
+/* Status badges */
+.status-badge {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-open {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-closed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-draft {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-active {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-pass {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-fail {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Notification System */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 300px;
+    max-width: 500px;
+    z-index: 10000;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    border-left: 4px solid #3498db;
+}
+
+.notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification-success {
+    border-left-color: #27ae60;
+}
+
+.notification-error {
+    border-left-color: #e74c3c;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.notification-content i {
+    font-size: 1.2rem;
+}
+
+.notification-success i {
+    color: #27ae60;
+}
+
+.notification-error i {
+    color: #e74c3c;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #7f8c8d;
+    padding: 0;
+    margin-left: 1rem;
+}
+
+/* Question Details Modal */
+.question-details {
+    margin-top: 1rem;
+}
+
+.question-detail {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border-left: 4px solid #dee2e6;
+}
+
+.question-detail h5 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.question-detail p {
+    color: #555;
+    margin-bottom: 0.75rem;
+}
+
+.answer-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.answer-status.correct {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #27ae60;
+}
+
+.answer-status.incorrect {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #e74c3c;
+}
+
+/* Analytics Statistics */
+.success-rate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.success-rate small {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.success-rate .easy {
+    background: #d4edda;
+    color: #155724;
+}
+
+.success-rate .medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.success-rate .hard {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.success-count {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.fail-count {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+/* Enhanced Table Styles */
+.data-table tbody tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.data-table .action-btn {
+    padding: 0.5rem;
+    margin: 0 0.25rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.data-table .action-btn:hover {
+    background: #f0f0f0;
+}
+
+.data-table .action-btn.btn-danger:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
+
+/* Modal Enhancements */
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Section visibility toggle */
+#question-stats-section {
+    transition: all 0.3s ease;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .notification {
+        left: 20px;
+        right: 20px;
+        min-width: auto;
+        max-width: none;
+    }
+    
+    .modal-content {
+        margin: 1rem;
+        width: calc(100% - 2rem);
+        max-width: none;
+    }
+    
+    .success-rate {
+        align-items: flex-start;
+    }
+    
+    .data-table {
+        font-size: 0.9rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem;
+    }
+}
+
+/* Enhanced course cards for modules */
+.course-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.course-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #3498db, #2ecc71);
+    transform: scaleX(0);
+    transition: transform 0.3s;
+}
+
+.course-card:hover::after {
+    transform: scaleX(1);
+}
+
+/* Upload section styling */
+#upload-page .form-group {
+    margin-bottom: 1.5rem;
+}
+
+#upload-page input[type="file"] {
+    border: 2px dashed #ddd;
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+#upload-page input[type="file"]:hover {
+    border-color: #3498db;
+}
+
+/* Loading states */
+.btn-primary:disabled,
+.btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #fff;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Statistics cards animation */
+.stat-card {
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-number {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* Enhanced profile sections */
+.profile-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.profile-section:hover {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.3s ease;
+}
