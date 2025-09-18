@@ -64,7 +64,7 @@
                     <span class="notification-badge">3</span>
                 </div>
                 <div class="user-info">
-                    <div class="user-name" id="topUserName">SIPHO MTSHALI</div>
+                    <div class="user-name" id="topUserName">GENERAL MTSHALI</div>
                     <div class="user-role">Facilitator</div>
                 </div>
             </div>
@@ -133,7 +133,7 @@
                 <div class="profile-page">
                     <div class="profile-header">
                         <div>
-                            <h2 class="profile-title">SIPHO MTSHALI</h2>
+                            <h2 class="profile-title">GENERAL MTSHALI</h2>
                             <div class="staff-id">20419</div>
                         </div>
                         <button class="btn-primary" id="editProfileMainBtn">
@@ -145,7 +145,7 @@
                         <h3 class="section-title">Basic Information</h3>
                         <div class="info-grid">
                             <div class="info-label">Full Name</div>
-                            <div class="info-value" id="profile-name">SIPHO MTSHALI</div>
+                            <div class="info-value" id="profile-name">GENERAL MTSHALI</div>
                             
                             <div class="info-label">Email Address</div>
                             <div class="info-value" id="profile-email">20419@stk.ac.za</div>
@@ -639,6 +639,200 @@
             </form>
         </div>
     </div>
+
+    <!-- Test Creation Modal -->
+<div class="modal" id="testCreationModal">
+    <div class="modal-content" style="max-width: 1200px; width: 95%;">
+        <div class="modal-header">
+            <h3 class="modal-title">Create New Test</h3>
+            <button class="close-modal" onclick="closeTestCreation()">&times;</button>
+        </div>
+        <div class="test-creator-container" style="box-shadow: none; margin: 0;">
+            <!-- Header -->
+            <div class="test-header">
+                <div class="test-title-section">
+                    <h1 id="testTitle">New Test</h1>
+                    <div class="test-subtitle">Create your assessment</div>
+                </div>
+                <div class="header-actions">
+                    <div class="visibility-toggle">
+                        <i class="fas fa-eye-slash"></i>
+                        <span>Hidden from students</span>
+                        <button class="btn-header">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <button class="btn-header">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="test-content">
+                <!-- Test Builder -->
+                <div class="test-builder">
+                    <div class="create-section" id="createSection">
+                        <div class="create-visual">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <h2>Create your assessment</h2>
+                        <p>Select the plus icon to get started</p>
+                        <button class="add-question-btn" onclick="openQuestionModal()">
+                            <i class="fas fa-plus"></i>
+                            Add Question
+                        </button>
+                    </div>
+
+                    <!-- Questions List -->
+                    <div class="questions-list" id="questionsList" style="display: none;">
+                        <!-- Questions will be dynamically added here -->
+                    </div>
+
+                    <!-- Student Content Section -->
+                    <div class="student-content-section">
+                        <div class="content-checkbox">
+                            <div class="checkbox">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <label>Allow students to add content at end of assessment</label>
+                        </div>
+                        <div class="content-description">
+                            Students can add text, images, and files here.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Settings -->
+                <div class="test-settings">
+                    <h3 class="settings-title">
+                        <i class="fas fa-cog"></i>
+                        Test Settings
+                    </h3>
+
+                    <div class="setting-group">
+                        <div class="setting-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            Due date
+                        </div>
+                        <input type="datetime-local" class="setting-input" id="dueDate">
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-label">
+                            <i class="fas fa-folder"></i>
+                            Grade category
+                        </div>
+                        <select class="setting-input" id="gradeCategory">
+                            <option value="test">Test</option>
+                            <option value="quiz">Quiz</option>
+                            <option value="assignment">Assignment</option>
+                            <option value="exam">Exam</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-label">
+                            <i class="fas fa-chart-bar"></i>
+                            Grading
+                        </div>
+                        <div class="setting-value">
+                            <input type="number" class="setting-input" id="maxPoints" placeholder="Maximum points" value="100">
+                            <small style="color: #666; margin-top: 5px; display: block;">
+                                Post grades automatically when assessment is graded.
+                                <a href="#" class="accommodation-link">Change grade posting setting.</a>
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-label">
+                            <i class="fas fa-redo"></i>
+                            Attempts allowed
+                        </div>
+                        <div class="attempts-checkbox">
+                            <div class="checkbox">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <input type="number" class="setting-input" value="1" min="1" style="width: 80px; display: inline-block;">
+                            <span>attempt</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-label">
+                            <i class="fas fa-universal-access"></i>
+                            Accommodations
+                        </div>
+                        <div class="setting-value">
+                            <a href="#" class="accommodation-link">1 student</a>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-label">
+                            <i class="fas fa-file-alt"></i>
+                            Originality Report
+                        </div>
+                        <div class="setting-value">
+                            <a href="#" class="report-link">Enable SafeAssign</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="test-footer">
+                <div class="footer-left">
+                    <span id="questionCount">0 questions</span> • Auto-save enabled
+                </div>
+                <div class="footer-actions">
+                    <button class="btn-secondary" onclick="cancelTest()">Cancel</button>
+                    <button class="btn-primary" onclick="saveTest()">Save Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Question Creation Modal -->
+<div class="modal" id="questionModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add New Question</h3>
+            <button class="close-modal" onclick="closeQuestionModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Question Type</label>
+                <select class="form-select" id="questionType" onchange="updateQuestionForm()">
+                    <option value="multiple-choice">Multiple Choice</option>
+                    <option value="true-false">True/False</option>
+                    <option value="short-answer">Short Answer</option>
+                    <option value="essay">Essay</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Question Text</label>
+                <textarea class="form-textarea" id="questionText" placeholder="Enter your question here..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Points</label>
+                <input type="number" class="form-input" id="questionPoints" value="1" min="0" step="0.5">
+            </div>
+
+            <div id="answersSection">
+                <!-- Answers will be dynamically added here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeQuestionModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveQuestion()">Add Question</button>
+        </div>
+    </div>
+</div>
 
     <!-- Student Test Details Modal -->
     <div class="modal" id="studentTestDetailsModal">

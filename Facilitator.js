@@ -21,6 +21,11 @@ let tests = [];
 let students = [];
 let testResults = [];
 let modulesListener = null; // For real-time updates
+// Test Creation Functions
+let questions = [];
+let editingQuestionIndex = -1;
+let currentTestId = null;
+
 
 // DOM Elements
 const navItems = document.querySelectorAll('.nav-item');
@@ -1619,6 +1624,503 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
+// Open test creation modal
+function openTestCreation(testId = null) {
+    currentTestId = testId;
+    questions = [];
+    editingQuestionIndex = -1;
+    
+    // Clear the test form
+    clearTestForm();
+    
+    // If editing, load test data
+    if (testId) {
+        loadTestForEditing(testId);
+    } else {
+        // Set default due date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(23, 59);
+        document.getElementById('dueDate').value = tomorrow.toISOString().slice(0, 16);
+        
+        // Show empty state
+        updateQuestionsList();
+    }
+    
+    // Show the test creation modal
+    document.getElementById('testCreationModal').style.display = 'flex';
+}
+
+// Close test creation modal
+function closeTestCreation() {
+    document.getElementById('testCreationModal').style.display = 'none';
+    clearTestForm();
+    questions = [];
+    editingQuestionIndex = -1;
+    currentTestId = null;
+}
+
+// Clear test form
+function clearTestForm() {
+    document.getElementById('testTitle').textContent = 'New Test';
+    document.getElementById('dueDate').value = '';
+    document.getElementById('gradeCategory').value = 'test';
+    document.getElementById('maxPoints').value = '100';
+    
+    const questionsList = document.getElementById('questionsList');
+    if (questionsList) {
+        questionsList.style.display = 'none';
+    }
+    
+    const createSection = document.getElementById('createSection');
+    if (createSection) {
+        createSection.style.display = 'block';
+    }
+}
+
+// Load test for editing
+async function loadTestForEditing(testId) {
+    try {
+        const testDoc = await db.collection('tests').doc(testId).get();
+        if (!testDoc.exists) {
+            showNotification('Test not found', 'error');
+            return;
+        }
+        
+        const testData = testDoc.data();
+        
+        // Verify ownership
+        if (testData.facilitatorId !== auth.currentUser.uid) {
+            showNotification('You can only edit your own tests', 'error');
+            return;
+        }
+        
+        // Populate form fields
+        document.getElementById('testTitle').textContent = testData.title || 'Untitled Test';
+        document.getElementById('dueDate').value = testData.dueDate || '';
+        document.getElementById('gradeCategory').value = testData.gradeCategory || 'test';
+        document.getElementById('maxPoints').value = testData.maxPoints || 100;
+        
+        // Load questions
+        if (testData.questions && Array.isArray(testData.questions)) {
+            questions = testData.questions;
+            updateQuestionsList();
+        }
+        
+        // Update modal title
+        document.querySelector('#testCreationModal .modal-title').textContent = 'Edit Test';
+        
+    } catch (error) {
+        console.error('Error loading test for editing:', error);
+        showNotification('Error loading test data', 'error');
+    }
+}
+
+// Open question modal
+function openQuestionModal() {
+    editingQuestionIndex = -1;
+    clearQuestionForm();
+    updateQuestionForm();
+    document.getElementById('questionModal').style.display = 'flex';
+}
+
+// Close question modal
+function closeQuestionModal() {
+    document.getElementById('questionModal').style.display = 'none';
+    clearQuestionForm();
+}
+
+// Clear question form
+function clearQuestionForm() {
+    document.getElementById('questionText').value = '';
+    document.getElementById('questionPoints').value = '1';
+    document.getElementById('questionType').value = 'multiple-choice';
+}
+
+// Update question form based on type
+function updateQuestionForm() {
+    const questionType = document.getElementById('questionType').value;
+    const answersSection = document.getElementById('answersSection');
+    
+    let answersHtml = '';
+    
+    if (questionType === 'multiple-choice') {
+        answersHtml = `
+            <div class="form-group">
+                <label class="form-label">Answer Options</label>
+                <div class="answer-input-group">
+                    <input type="text" class="answer-input" placeholder="Option A" data-option="0">
+                    <div class="correct-indicator" onclick="selectCorrect(0)" data-correct="0">
+                        <i class="fas fa-check" style="display: none;"></i>
+                    </div>
+                </div>
+                <div class="answer-input-group">
+                    <input type="text" class="answer-input" placeholder="Option B" data-option="1">
+                    <div class="correct-indicator" onclick="selectCorrect(1)" data-correct="1">
+                        <i class="fas fa-check" style="display: none;"></i>
+                    </div>
+                </div>
+                <div class="answer-input-group">
+                    <input type="text" class="answer-input" placeholder="Option C" data-option="2">
+                    <div class="correct-indicator" onclick="selectCorrect(2)" data-correct="2">
+                        <i class="fas fa-check" style="display: none;"></i>
+                    </div>
+                </div>
+                <div class="answer-input-group">
+                    <input type="text" class="answer-input" placeholder="Option D" data-option="3">
+                    <div class="correct-indicator" onclick="selectCorrect(3)" data-correct="3">
+                        <i class="fas fa-check" style="display: none;"></i>
+                    </div>
+                </div>
+                <small style="color: #666; margin-top: 10px;">Click the circle to mark the correct answer</small>
+            </div>
+        `;
+    } else if (questionType === 'true-false') {
+        answersHtml = `
+            <div class="form-group">
+                <label class="form-label">Correct Answer</label>
+                <div class="answer-input-group">
+                    <span style="flex: 1;">True</span>
+                    <div class="correct-indicator selected" onclick="selectTrueFalse(true)" data-value="true">
+                        <i class="fas fa-check"></i>
+                    </div>
+                </div>
+                <div class="answer-input-group">
+                    <span style="flex: 1;">False</span>
+                    <div class="correct-indicator" onclick="selectTrueFalse(false)" data-value="false">
+                        <i class="fas fa-check" style="display: none;"></i>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else if (questionType === 'short-answer' || questionType === 'essay') {
+        answersHtml = `
+            <div class="form-group">
+                <label class="form-label">Sample Answer (Optional)</label>
+                <textarea class="form-textarea" id="sampleAnswer" placeholder="Enter a sample answer for reference..."></textarea>
+            </div>
+        `;
+    }
+    
+    answersSection.innerHTML = answersHtml;
+}
+
+// Select correct answer for multiple choice
+function selectCorrect(index) {
+    // Clear all selections
+    document.querySelectorAll('.correct-indicator').forEach((indicator, i) => {
+        indicator.classList.remove('selected');
+        indicator.querySelector('i').style.display = 'none';
+    });
+    
+    // Select the clicked one
+    const selectedIndicator = document.querySelector(`[data-correct="${index}"]`);
+    selectedIndicator.classList.add('selected');
+    selectedIndicator.querySelector('i').style.display = 'inline';
+}
+
+// Select correct answer for true/false
+function selectTrueFalse(value) {
+    document.querySelectorAll('.correct-indicator').forEach(indicator => {
+        indicator.classList.remove('selected');
+        indicator.querySelector('i').style.display = 'none';
+    });
+    
+    const selectedIndicator = document.querySelector(`[data-value="${value}"]`);
+    selectedIndicator.classList.add('selected');
+    selectedIndicator.querySelector('i').style.display = 'inline';
+}
+
+// Save question
+function saveQuestion() {
+    const questionText = document.getElementById('questionText').value.trim();
+    const questionType = document.getElementById('questionType').value;
+    const points = parseFloat(document.getElementById('questionPoints').value);
+    
+    if (!questionText) {
+        showNotification('Please enter a question text', 'error');
+        return;
+    }
+    
+    const question = {
+        id: Date.now(),
+        text: questionText,
+        type: questionType,
+        points: points,
+        answers: []
+    };
+    
+    // Collect answers based on question type
+    if (questionType === 'multiple-choice') {
+        const answerInputs = document.querySelectorAll('.answer-input');
+        const correctIndicator = document.querySelector('.correct-indicator.selected');
+        
+        answerInputs.forEach((input, index) => {
+            if (input.value.trim()) {
+                question.answers.push({
+                    text: input.value.trim(),
+                    correct: correctIndicator && correctIndicator.dataset.correct == index
+                });
+            }
+        });
+        
+        if (question.answers.length < 2) {
+            showNotification('Please provide at least 2 answer options', 'error');
+            return;
+        }
+        
+        if (!question.answers.some(a => a.correct)) {
+            showNotification('Please select the correct answer', 'error');
+            return;
+        }
+    } else if (questionType === 'true-false') {
+        const correctValue = document.querySelector('.correct-indicator.selected').dataset.value === 'true';
+        question.answers = [
+            { text: 'True', correct: correctValue },
+            { text: 'False', correct: !correctValue }
+        ];
+    } else if (questionType === 'short-answer' || questionType === 'essay') {
+        const sampleAnswer = document.getElementById('sampleAnswer');
+        if (sampleAnswer && sampleAnswer.value.trim()) {
+            question.sampleAnswer = sampleAnswer.value.trim();
+        }
+    }
+    
+    if (editingQuestionIndex >= 0) {
+        questions[editingQuestionIndex] = question;
+    } else {
+        questions.push(question);
+    }
+    
+    updateQuestionsList();
+    closeQuestionModal();
+}
+
+// Update questions list
+function updateQuestionsList() {
+    const createSection = document.getElementById('createSection');
+    const questionsList = document.getElementById('questionsList');
+    const questionCount = document.getElementById('questionCount');
+    
+    if (questions.length === 0) {
+        createSection.style.display = 'block';
+        questionsList.style.display = 'none';
+    } else {
+        createSection.style.display = 'none';
+        questionsList.style.display = 'block';
+        
+        questionsList.innerHTML = questions.map((question, index) => `
+            <div class="question-item">
+                <div class="question-header">
+                    <span class="question-number">Question ${index + 1}</span>
+                    <div class="question-actions">
+                        <button class="action-btn" onclick="editQuestion(${index})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn" onclick="duplicateQuestion(${index})" title="Duplicate">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="action-btn" onclick="deleteQuestion(${index})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="question-content">
+                    <div class="question-text">${question.text}</div>
+                    <span class="question-type">${formatQuestionType(question.type)} • ${question.points} point${question.points !== 1 ? 's' : ''}</span>
+                </div>
+                ${question.answers.length > 0 ? `
+                    <div class="answers-preview">
+                        ${question.answers.map(answer => `
+                            <div class="answer-option ${answer.correct ? 'correct' : ''}">
+                                <i class="fas ${answer.correct ? 'fa-check-circle' : 'fa-circle'}"></i>
+                                <span>${answer.text}</span>
+                            </div>`).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+        
+        // Add "Add Question" button at the end
+        questionsList.innerHTML += `
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="add-question-btn" onclick="openQuestionModal()">
+                    <i class="fas fa-plus"></i>
+                    Add Another Question
+                </button>
+            </div>
+        `;
+    }
+    
+    questionCount.textContent = `${questions.length} question${questions.length !== 1 ? 's' : ''}`;
+}
+
+// Format question type
+function formatQuestionType(type) {
+    const types = {
+        'multiple-choice': 'Multiple Choice',
+        'true-false': 'True/False',
+        'short-answer': 'Short Answer',
+        'essay': 'Essay'
+    };
+    return types[type] || type;
+}
+
+// Edit question
+function editQuestion(index) {
+    editingQuestionIndex = index;
+    const question = questions[index];
+    
+    document.getElementById('questionText').value = question.text;
+    document.getElementById('questionType').value = question.type;
+    document.getElementById('questionPoints').value = question.points;
+    
+    updateQuestionForm();
+    
+    // Pre-fill answers based on question type
+    setTimeout(() => {
+        if (question.type === 'multiple-choice') {
+            const answerInputs = document.querySelectorAll('.answer-input');
+            const correctIndicators = document.querySelectorAll('.correct-indicator');
+            
+            question.answers.forEach((answer, i) => {
+                if (answerInputs[i]) {
+                    answerInputs[i].value = answer.text;
+                    if (answer.correct) {
+                        selectCorrect(i);
+                    }
+                }
+            });
+        } else if (question.type === 'true-false') {
+            const correctAnswer = question.answers.find(a => a.correct);
+            if (correctAnswer) {
+                selectTrueFalse(correctAnswer.text === 'True');
+            }
+        } else if (question.sampleAnswer) {
+            const sampleAnswerField = document.getElementById('sampleAnswer');
+            if (sampleAnswerField) {
+                sampleAnswerField.value = question.sampleAnswer;
+            }
+        }
+    }, 100);
+    
+    document.querySelector('.modal-title').textContent = 'Edit Question';
+    document.querySelector('.modal-footer .btn-primary').textContent = 'Update Question';
+    document.getElementById('questionModal').style.display = 'flex';
+}
+
+// Duplicate question
+function duplicateQuestion(index) {
+    const question = JSON.parse(JSON.stringify(questions[index]));
+    question.id = Date.now();
+    questions.splice(index + 1, 0, question);
+    updateQuestionsList();
+}
+
+// Delete question
+function deleteQuestion(index) {
+    if (confirm('Are you sure you want to delete this question?')) {
+        questions.splice(index, 1);
+        updateQuestionsList();
+    }
+}
+
+// Save test to Firebase
+async function saveTest() {
+    const testTitle = document.getElementById('testTitle').textContent;
+    const dueDate = document.getElementById('dueDate').value;
+    const gradeCategory = document.getElementById('gradeCategory').value;
+    const maxPoints = document.getElementById('maxPoints').value;
+    
+    if (questions.length === 0) {
+        showNotification('Please add at least one question to save the test.', 'error');
+        return;
+    }
+    
+    const testData = {
+        title: testTitle,
+        dueDate: dueDate,
+        gradeCategory: gradeCategory,
+        maxPoints: parseInt(maxPoints),
+        questions: questions,
+        totalQuestions: questions.length,
+        facilitatorId: auth.currentUser.uid,
+        facilitatorName: currentUser.name || currentUser.email,
+        createdAt: currentTestId ? null : firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    try {
+        if (currentTestId) {
+            // Update existing test
+            await db.collection('tests').doc(currentTestId).update(testData);
+            showNotification('Test updated successfully!', 'success');
+        } else {
+            // Create new test
+            const docRef = await db.collection('tests').add(testData);
+            showNotification('Test created successfully!', 'success');
+            currentTestId = docRef.id;
+        }
+        
+        // Close the modal and refresh the tests list
+        closeTestCreation();
+        loadTests();
+        
+    } catch (error) {
+        console.error('Error saving test:', error);
+        showNotification('Error saving test. Please try again.', 'error');
+    }
+}
+
+// Cancel test creation
+function cancelTest() {
+    if (questions.length > 0) {
+        if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
+            closeTestCreation();
+        }
+    } else {
+        closeTestCreation();
+    }
+}
+
+// Initialize test creation modal
+function initTestCreationModal() {
+    // Close modal when clicking outside
+    document.getElementById('testCreationModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeTestCreation();
+        }
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeQuestionModal();
+            closeTestCreation();
+        }
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            saveTest();
+        }
+    });
+}
+
+// Update the createTestBtn event listener
+if (createTestBtn) {
+    createTestBtn.addEventListener('click', () => {
+        openTestCreation();
+    });
+}
+
+// Update the editTest function to use the new test creation modal
+async function editTest(testId) {
+    openTestCreation(testId);
+}
+// Initialize the test creation modal when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    initTestCreationModal();
+});
+
 // Export functions to global scope for onclick handlers
 window.editModule = editModule;
 window.deleteModule = deleteModule;
@@ -1626,3 +2128,13 @@ window.viewModule = viewModule;
 window.editTest = editTest;
 window.deleteTest = deleteTest;
 window.viewTestDetails = viewTestDetails;
+window.openQuestionModal = openQuestionModal;
+window.closeQuestionModal = closeQuestionModal;
+window.selectCorrect = selectCorrect;
+window.selectTrueFalse = selectTrueFalse;
+window.saveQuestion = saveQuestion;
+window.editQuestion = editQuestion;
+window.duplicateQuestion = duplicateQuestion;
+window.deleteQuestion = deleteQuestion;
+window.saveTest = saveTest;
+window.cancelTest = cancelTest;
