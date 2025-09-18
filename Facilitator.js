@@ -902,11 +902,11 @@ function displayStudentResults() {
     // Create sample student results for demonstration
     const sampleResults = [
         { 
-            studentName: 'John Doe', 
-            studentId: '220415001', 
+            studentName: 'Zakwe Mlamuli', 
+            studentId: '22461501', 
             testName: 'Database Midterm',
-            score: 85, 
-            totalPoints: 100, 
+            score: 37, 
+            totalPoints: 40, 
             status: 'Pass',
             answers: [
                 { questionId: 1, isCorrect: true },
@@ -915,11 +915,11 @@ function displayStudentResults() {
             ]
         },
         { 
-            studentName: 'Jane Smith', 
-            studentId: '220415002', 
+            studentName: 'Andiswa Zondi', 
+            studentId: '22541500', 
             testName: 'Database Midterm',
-            score: 72, 
-            totalPoints: 100, 
+            score: 38, 
+            totalPoints: 40, 
             status: 'Pass',
             answers: [
                 { questionId: 1, isCorrect: true },
@@ -928,15 +928,15 @@ function displayStudentResults() {
             ]
         },
         { 
-            studentName: 'Mike Johnson', 
-            studentId: '220415003', 
+            studentName: 'Scelo Gumede', 
+            studentId: '224415603', 
             testName: 'Programming Assignment',
-            score: 45, 
-            totalPoints: 100, 
-            status: 'Fail',
+            score: 40, 
+            totalPoints: 40, 
+            status: 'Pass',
             answers: [
-                { questionId: 1, isCorrect: false },
-                { questionId: 2, isCorrect: false },
+                { questionId: 1, isCorrect: true },
+                { questionId: 2, isCorrect: true },
                 { questionId: 3, isCorrect: true }
             ]
         }
