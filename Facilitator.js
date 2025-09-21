@@ -1,4 +1,3 @@
-// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyC8m_iv91L2EUEc6Xsg5DJHGWTdfUcxGZY",
     authDomain: "edutech-system.firebaseapp.com",
@@ -20,34 +19,83 @@ let modules = [];
 let tests = [];
 let students = [];
 let testResults = [];
-let modulesListener = null; // For real-time updates
-// Test Creation Functions
+let modulesListener = null;
 let questions = [];
 let editingQuestionIndex = -1;
 let currentTestId = null;
-
+let currentTestVisibility = false;
+let accommodatedStudents = [];
 
 // DOM Elements
 const navItems = document.querySelectorAll('.nav-item');
 const pageContents = document.querySelectorAll('.page-content');
 const logoutBtn = document.getElementById('logoutBtn');
-const userName = document.getElementById('userName');
 const topUserName = document.getElementById('topUserName');
 const addModuleBtn = document.getElementById('addModuleBtn');
 const createModuleBtn = document.getElementById('createModuleBtn');
 const createTestBtn = document.getElementById('createTestBtn');
 const moduleModal = document.getElementById('moduleModal');
-const testModal = document.getElementById('testModal');
 const editProfileModal = document.getElementById('editProfileModal');
 const changePasswordModal = document.getElementById('changePasswordModal');
 const studentTestDetailsModal = document.getElementById('studentTestDetailsModal');
 const closeModuleModal = document.getElementById('closeModuleModal');
-const closeTestModal = document.getElementById('closeTestModal');
 const closeEditProfileModal = document.getElementById('closeEditProfileModal');
-const viewProfileBtn = document.getElementById('viewProfileBtn');
-const editProfileBtn = document.getElementById('editProfileBtn');
 const editProfileMainBtn = document.getElementById('editProfileMainBtn');
 const changePasswordBtn = document.getElementById('changePasswordBtn');
+const testCreationModal = document.getElementById('testCreationModal');
+
+// Enhanced Toast Notification System
+function showToast(message, type = 'info', duration = 5000) {
+    const toastContainer = document.getElementById('toast-container');
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const iconMap = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        warning: 'fas fa-exclamation-triangle',
+        info: 'fas fa-info-circle'
+    };
+    
+    toast.innerHTML = `
+        <i class="toast-icon ${iconMap[type] || iconMap.info}"></i>
+        <div class="toast-message">${message}</div>
+        <button class="toast-close">&times;</button>
+    `;
+    
+    // Add to container
+    toastContainer.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    // Auto remove
+    const autoRemoveTimer = setTimeout(() => {
+        removeToast(toast);
+    }, duration);
+    
+    // Close button functionality
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn.addEventListener('click', () => {
+        clearTimeout(autoRemoveTimer);
+        removeToast(toast);
+    });
+    
+    return toast;
+}
+
+function removeToast(toast) {
+    if (!toast || !toast.parentNode) return;
+    
+    toast.classList.add('removing');
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 200);
+}
 
 // Authentication Check
 auth.onAuthStateChanged(async (user) => {
@@ -56,28 +104,21 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         
         try {
-            // Load user profile first
             await loadUserProfile();
-            
-            // Then initialize real-time listeners
-            console.log('User profile loaded, initializing listeners');
             initializeRealTimeListeners();
-            
-            // Load other initial data
             loadInitialData();
+            showToast('Welcome back! Dashboard loaded successfully.', 'success', 3000);
         } catch (error) {
             console.error('Error during initialization:', error);
-            showNotification('Error loading user data. Please refresh the page.', 'error');
+            showToast('Error loading user data. Please refresh the page.', 'error');
         }
     } else {
         console.log('User not authenticated, cleaning up and redirecting');
-        // Clean up listeners
         if (modulesListener) {
             modulesListener();
             modulesListener = null;
         }
-        // Redirect to login if not authenticated
-        window.location.href = 'login.html';
+        window.location.href = 'index.html';
     }
 });
 
@@ -90,13 +131,11 @@ function initializeRealTimeListeners() {
     
     console.log('Setting up real-time listener for user:', auth.currentUser.uid);
     
-    // Clean up existing listener if it exists
     if (modulesListener) {
         console.log('Cleaning up existing modules listener');
         modulesListener();
     }
     
-    // Listen for changes to modules where current user is facilitator
     modulesListener = db.collection('modules')
         .where('facilitatorId', '==', auth.currentUser.uid)
         .onSnapshot((snapshot) => {
@@ -110,22 +149,17 @@ function initializeRealTimeListeners() {
             });
             
             console.log('Total modules loaded:', modules.length);
-            
-            // Update all displays immediately
             displayModules();
             updateDashboardStats();
             
-            // Update modules page if it's currently active
             const modulesPage = document.getElementById('modules-page');
             if (modulesPage && modulesPage.classList.contains('active')) {
                 loadAllModulesWithRealTime();
             }
             
-            // Force refresh dashboard if it's currently active
             const dashboardPage = document.getElementById('dashboard-page');
             if (dashboardPage && dashboardPage.classList.contains('active')) {
                 console.log('Dashboard is active, refreshing display');
-                // Small delay to ensure DOM is ready
                 setTimeout(() => {
                     displayModules();
                 }, 100);
@@ -133,16 +167,15 @@ function initializeRealTimeListeners() {
         }, (error) => {
             console.error('Error in modules listener:', error);
             
-            // Handle specific error cases
             if (error.code === 'permission-denied') {
                 console.error('Permission denied - check Firestore security rules');
-                showNotification('Permission denied. Please check your access rights.', 'error');
+                showToast('Permission denied. Please check your access rights.', 'error');
             } else if (error.code === 'failed-precondition') {
                 console.error('Missing index - check Firestore indexes');
-                showNotification('Database configuration issue. Please contact support.', 'error');
+                showToast('Database configuration issue. Please contact support.', 'error');
             } else {
                 console.error('Unknown error loading modules:', error);
-                showNotification('Error loading modules. Please try refreshing the page.', 'error');
+                showToast('Error loading modules. Please try refreshing the page.', 'error');
             }
         });
 }
@@ -158,6 +191,7 @@ async function loadUserProfile() {
         }
     } catch (error) {
         console.error('Error loading user profile:', error);
+        showToast('Error loading profile data.', 'error');
     }
 }
 
@@ -184,7 +218,6 @@ function loadInitialData() {
     loadTests();
     loadStudents();
     loadTestResults();
-    // Modules are loaded via real-time listener
 }
 
 // Navigation
@@ -192,11 +225,9 @@ navItems.forEach(item => {
     item.addEventListener('click', () => {
         const page = item.getAttribute('data-page');
         
-        // Update active nav item
         navItems.forEach(navItem => navItem.classList.remove('active'));
         item.classList.add('active');
         
-        // Show corresponding page
         pageContents.forEach(content => {
             content.classList.remove('active');
             if (content.id === `${page}-page`) {
@@ -204,9 +235,7 @@ navItems.forEach(item => {
             }
         });
 
-        // Load page-specific data and clear hardcoded content
         if (page === 'dashboard') {
-            // Clear any hardcoded modules and refresh from database
             setTimeout(() => {
                 displayModules();
                 updateDashboardStats();
@@ -242,11 +271,7 @@ if (createModuleBtn) {
 
 if (createTestBtn) {
     createTestBtn.addEventListener('click', () => {
-        clearTestForm();
-        document.querySelector('#testModal .modal-title').textContent = 'Create New Test';
-        document.querySelector('#testModal .btn-primary').textContent = 'Create Test';
-        loadModulesForTest();
-        testModal.style.display = 'flex';
+        openTestCreation();
     });
 }
 
@@ -254,10 +279,10 @@ if (createTestBtn) {
 function setupModalClosers() {
     const modals = [
         { modal: moduleModal, closer: closeModuleModal },
-        { modal: testModal, closer: closeTestModal },
         { modal: editProfileModal, closer: closeEditProfileModal },
         { modal: changePasswordModal, closer: document.getElementById('closeChangePasswordModal') },
-        { modal: studentTestDetailsModal, closer: document.querySelector('#studentTestDetailsModal .close-modal') }
+        { modal: studentTestDetailsModal, closer: document.querySelector('#studentTestDetailsModal .close-modal') },
+        { modal: testCreationModal, closer: document.querySelector('#testCreationModal .close-modal') }
     ];
 
     modals.forEach(({ modal, closer }) => {
@@ -268,7 +293,6 @@ function setupModalClosers() {
         }
     });
 
-    // Close modal when clicking outside
     window.addEventListener('click', (e) => {
         modals.forEach(({ modal }) => {
             if (e.target === modal) {
@@ -278,7 +302,6 @@ function setupModalClosers() {
     });
 }
 
-// Initialize modal closers
 setupModalClosers();
 
 // Profile buttons
@@ -296,7 +319,6 @@ if (changePasswordBtn) {
 function openEditProfile() {
     if (!currentUser) return;
     
-    // Pre-fill the form with current user data
     document.getElementById('editName').value = currentUser.name || '';
     document.getElementById('editEmail').value = currentUser.email || '';
     document.getElementById('editGender').value = currentUser.gender || 'Male';
@@ -330,10 +352,10 @@ document.getElementById('editProfileForm').addEventListener('submit', async (e) 
         currentUser = { ...currentUser, ...updatedData };
         updateProfileDisplay();
         editProfileModal.style.display = 'none';
-        showNotification('Profile updated successfully!', 'success');
+        showToast('Profile updated successfully!', 'success');
     } catch (error) {
         console.error('Error updating profile:', error);
-        showNotification('Error updating profile. Please try again.', 'error');
+        showToast('Error updating profile. Please try again.', 'error');
     }
 });
 
@@ -346,12 +368,12 @@ document.getElementById('changePasswordForm').addEventListener('submit', async (
     const confirmPassword = document.getElementById('confirmPassword').value;
     
     if (newPassword !== confirmPassword) {
-        showNotification('New passwords do not match!', 'error');
+        showToast('New passwords do not match!', 'error');
         return;
     }
     
     if (newPassword.length < 6) {
-        showNotification('Password must be at least 6 characters long!', 'error');
+        showToast('Password must be at least 6 characters long!', 'error');
         return;
     }
     
@@ -366,19 +388,18 @@ document.getElementById('changePasswordForm').addEventListener('submit', async (
         
         changePasswordModal.style.display = 'none';
         document.getElementById('changePasswordForm').reset();
-        showNotification('Password updated successfully!', 'success');
+        showToast('Password updated successfully!', 'success');
     } catch (error) {
         console.error('Error changing password:', error);
-        showNotification('Error changing password. Please check your current password.', 'error');
+        showToast('Error changing password. Please check your current password.', 'error');
     }
 });
 
-// ENHANCED MODULE MANAGEMENT FUNCTIONS WITH FIREBASE INTEGRATION
+// MODULE MANAGEMENT FUNCTIONS
 
 // Clear module form
 function clearModuleForm() {
     document.getElementById('moduleForm').reset();
-    // Clear the hidden ID field
     const moduleIdInput = document.getElementById('moduleId') || createHiddenInput('moduleId', 'moduleForm');
     moduleIdInput.value = '';
 }
@@ -394,13 +415,11 @@ async function handleModuleSubmit(e) {
     const moduleDescription = document.getElementById('moduleDescription').value.trim();
     const moduleStatus = document.getElementById('moduleStatus').value;
 
-    // Validation
     if (!moduleCode || !moduleName) {
-        showNotification('Module code and name are required!', 'error');
+        showToast('Module code and name are required!', 'error');
         return;
     }
 
-    // Check for duplicate module codes (only when creating new)
     if (!moduleId) {
         try {
             const existingModule = await db.collection('modules')
@@ -409,12 +428,12 @@ async function handleModuleSubmit(e) {
                 .get();
             
             if (!existingModule.empty) {
-                showNotification('A module with this code already exists!', 'error');
+                showToast('A module with this code already exists!', 'error');
                 return;
             }
         } catch (error) {
             console.error('Error checking for duplicate module:', error);
-            showNotification('Error validating module. Please try again.', 'error');
+            showToast('Error validating module. Please try again.', 'error');
             return;
         }
     }
@@ -430,20 +449,17 @@ async function handleModuleSubmit(e) {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    // Add createdAt only for new modules
     if (!moduleId) {
         moduleData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
     }
 
     try {
         if (moduleId) {
-            // Update existing module
             await db.collection('modules').doc(moduleId).update(moduleData);
-            showNotification('Module updated successfully!', 'success');
+            showToast('Module updated successfully!', 'success');
         } else {
-            // Create new module
             const docRef = await db.collection('modules').add(moduleData);
-            showNotification('Module created successfully!', 'success');
+            showToast('Module created successfully!', 'success');
             console.log('New module created with ID:', docRef.id);
         }
         
@@ -451,14 +467,13 @@ async function handleModuleSubmit(e) {
         clearModuleForm();
     } catch (error) {
         console.error('Error saving module:', error);
-        showNotification('Error saving module. Please try again.', 'error');
+        showToast('Error saving module. Please try again.', 'error');
     }
 }
 
-// Add event listener for module form
 document.getElementById('moduleForm').addEventListener('submit', handleModuleSubmit);
 
-// Display modules in dashboard grid (using real-time data)
+// Display modules in dashboard grid
 function displayModules() {
     const modulesGrid = document.querySelector('.courses-grid');
     if (!modulesGrid) {
@@ -467,8 +482,6 @@ function displayModules() {
     }
     
     console.log('Displaying modules. Count:', modules.length);
-    
-    // Clear existing content including hardcoded modules
     modulesGrid.innerHTML = '';
     
     if (modules.length === 0) {
@@ -497,9 +510,7 @@ function displayModules() {
             <span class="course-status">${statusText} | ${module.enrollmentCount || 0} enrolled</span>
         `;
         
-        // Add click handler to view module details
         moduleCard.addEventListener('click', () => {
-            // Switch to modules page and highlight this module
             switchToModulesPage(module.id);
         });
         
@@ -509,7 +520,6 @@ function displayModules() {
     console.log('Finished displaying modules. Cards added:', modules.length);
 }
 
-// Helper function to get readable status text
 function getStatusText(status) {
     switch(status) {
         case 'open': return 'Open for enrollment';
@@ -519,14 +529,11 @@ function getStatusText(status) {
     }
 }
 
-// Function to switch to modules page and highlight specific module
 function switchToModulesPage(moduleId = null) {
-    // Click the modules nav item
     const modulesNavItem = document.querySelector('.nav-item[data-page="modules"]');
     if (modulesNavItem) {
         modulesNavItem.click();
         
-        // If a specific module ID is provided, highlight it after a delay
         if (moduleId) {
             setTimeout(() => {
                 highlightModule(moduleId);
@@ -535,7 +542,6 @@ function switchToModulesPage(moduleId = null) {
     }
 }
 
-// Function to highlight a specific module in the table
 function highlightModule(moduleId) {
     const moduleRows = document.querySelectorAll('#modules-table-body tr');
     moduleRows.forEach(row => {
@@ -544,7 +550,6 @@ function highlightModule(moduleId) {
             row.classList.add('highlighted-row');
             row.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
-            // Remove highlight after 3 seconds
             setTimeout(() => {
                 row.classList.remove('highlighted-row');
             }, 3000);
@@ -552,10 +557,8 @@ function highlightModule(moduleId) {
     });
 }
 
-// Load all modules for the modules page with real-time updates
 async function loadAllModulesWithRealTime() {
     try {
-        // Set up real-time listener for all modules in the modules page
         db.collection('modules')
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
@@ -566,14 +569,13 @@ async function loadAllModulesWithRealTime() {
                 displayAllModules(allModules);
             }, (error) => {
                 console.error('Error loading all modules:', error);
-                showNotification('Error loading modules', 'error');
+                showToast('Error loading modules', 'error');
             });
     } catch (error) {
         console.error('Error setting up modules listener:', error);
     }
 }
 
-// Display all modules in the modules management table
 function displayAllModules(modulesList) {
     const tableBody = document.getElementById('modules-table-body');
     if (!tableBody) return;
@@ -618,27 +620,23 @@ function displayAllModules(modulesList) {
     });
 }
 
-// Edit existing module
 async function editModule(moduleId) {
     try {
-        // Show loading state
-        showNotification('Loading module data...', 'info');
+        showToast('Loading module data...', 'info', 2000);
         
         const moduleDoc = await db.collection('modules').doc(moduleId).get();
         if (!moduleDoc.exists) {
-            showNotification('Module not found', 'error');
+            showToast('Module not found', 'error');
             return;
         }
         
         const moduleData = moduleDoc.data();
         
-        // Verify ownership
         if (moduleData.facilitatorId !== auth.currentUser.uid) {
-            showNotification('You can only edit your own modules', 'error');
+            showToast('You can only edit your own modules', 'error');
             return;
         }
         
-        // Pre-fill form with existing data
         const moduleIdInput = document.getElementById('moduleId') || createHiddenInput('moduleId', 'moduleForm');
         moduleIdInput.value = moduleId;
         
@@ -647,59 +645,50 @@ async function editModule(moduleId) {
         document.getElementById('moduleDescription').value = moduleData.description || '';
         document.getElementById('moduleStatus').value = moduleData.status || 'draft';
         
-        // Update modal title and button
         document.querySelector('#moduleModal .modal-title').textContent = 'Edit Module';
         document.querySelector('#moduleModal .btn-primary').textContent = 'Update Module';
         moduleModal.style.display = 'flex';
         
     } catch (error) {
         console.error('Error loading module for edit:', error);
-        showNotification('Error loading module data', 'error');
+        showToast('Error loading module data', 'error');
     }
 }
 
-// Delete module with confirmation
 async function deleteModule(moduleId) {
     try {
-        // Get module data first for confirmation
         const moduleDoc = await db.collection('modules').doc(moduleId).get();
         if (!moduleDoc.exists) {
-            showNotification('Module not found', 'error');
+            showToast('Module not found', 'error');
             return;
         }
         
         const moduleData = moduleDoc.data();
         
-        // Verify ownership
         if (moduleData.facilitatorId !== auth.currentUser.uid) {
-            showNotification('You can only delete your own modules', 'error');
+            showToast('You can only delete your own modules', 'error');
             return;
         }
         
-        // Confirmation dialog
         const confirmMessage = `Are you sure you want to delete "${moduleData.name}" (${moduleData.code})?\n\nThis action cannot be undone and will remove all associated content.`;
         
         if (!confirm(confirmMessage)) {
             return;
         }
         
-        // Delete the module
         await db.collection('modules').doc(moduleId).delete();
-        showNotification(`Module "${moduleData.name}" deleted successfully!`, 'success');
+        showToast(`Module "${moduleData.name}" deleted successfully!`, 'success');
         
     } catch (error) {
         console.error('Error deleting module:', error);
-        showNotification('Error deleting module. Please try again.', 'error');
+        showToast('Error deleting module. Please try again.', 'error');
     }
 }
 
-// View module details (for non-owners)
 function viewModule(moduleId) {
-    // This could open a modal showing module details
-    showNotification('Module viewing functionality coming soon!', 'info');
+    showToast('Module viewing functionality coming soon!', 'info');
 }
 
-// Helper function to create hidden inputs
 function createHiddenInput(id, formId) {
     const form = document.getElementById(formId);
     if (!form) return null;
@@ -712,17 +701,14 @@ function createHiddenInput(id, formId) {
     return input;
 }
 
-// Test Management Functions
-function clearTestForm() {
-    document.getElementById('testForm').reset();
-    const testIdInput = document.getElementById('testId') || createHiddenInput('testId', 'testForm');
-    testIdInput.value = '';
-}
+// ENHANCED TEST MANAGEMENT FUNCTIONS
 
-async function loadModulesForTest() {
+async function loadModulesForAdvancedTest() {
     try {
-        const snapshot = await db.collection('modules').get();
-        const moduleSelect = document.getElementById('testModule');
+        const snapshot = await db.collection('modules')
+            .where('facilitatorId', '==', auth.currentUser.uid)
+            .get();
+        const moduleSelect = document.getElementById('testModuleAdvanced');
         moduleSelect.innerHTML = '<option value="">-- Select a Module --</option>';
         
         snapshot.forEach(doc => {
@@ -733,59 +719,47 @@ async function loadModulesForTest() {
             moduleSelect.appendChild(option);
         });
     } catch (error) {
-        console.error('Error loading modules for test:', error);
+        console.error('Error loading modules for advanced test:', error);
+        showToast('Error loading modules', 'error');
     }
 }
-
-async function handleTestSubmit(e) {
-    e.preventDefault();
-    
-    const testIdInput = document.getElementById('testId') || createHiddenInput('testId', 'testForm');
-    const testId = testIdInput.value;
-    const testData = {
-        title: document.getElementById('testName').value,
-        moduleId: document.getElementById('testModule').value,
-        duration: parseInt(document.getElementById('testDuration').value),
-        questionCount: parseInt(document.getElementById('testQuestions').value),
-        status: document.getElementById('testStatus').value,
-        facilitatorId: auth.currentUser.uid,
-        facilitatorName: currentUser.name,
-        createdAt: testId ? null : firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    try {
-        if (testId) {
-            await db.collection('tests').doc(testId).update(testData);
-            showNotification('Test updated successfully!', 'success');
-        } else {
-            await db.collection('tests').add(testData);
-            showNotification('Test created successfully!', 'success');
-        }
-        
-        testModal.style.display = 'none';
-        loadTests();
-    } catch (error) {
-        console.error('Error saving test:', error);
-        showNotification('Error saving test. Please try again.', 'error');
-    }
-}
-
-// Add event listener for test form
-document.getElementById('testForm').addEventListener('submit', handleTestSubmit);
 
 async function loadTests() {
     try {
-        const snapshot = await db.collection('tests').get();
+        let snapshot;
+        try {
+            snapshot = await db.collection('tests')
+                .where('facilitatorId', '==', auth.currentUser.uid)
+                .orderBy('createdAt', 'desc')
+                .get();
+        } catch (orderError) {
+            console.log('OrderBy failed, trying simple query:', orderError);
+            snapshot = await db.collection('tests')
+                .where('facilitatorId', '==', auth.currentUser.uid)
+                .get();
+        }
+            
         tests = [];
         snapshot.forEach(doc => {
             tests.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Sort manually if we couldn't sort in the query
+        tests.sort((a, b) => {
+            const aTime = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(0);
+            const bTime = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
+            return bTime - aTime;
         });
         
         displayTests();
         populateTestSelect();
     } catch (error) {
         console.error('Error loading tests:', error);
+        showToast('Error loading tests. Please try again.', 'error');
+        
+        tests = [];
+        displayTests();
+        populateTestSelect();
     }
 }
 
@@ -795,19 +769,47 @@ function displayTests() {
     
     tableBody.innerHTML = '';
     
+    if (tests.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="no-data">No tests found</td>
+            </tr>
+        `;
+        return;
+    }
+    
     tests.forEach(test => {
         const row = document.createElement('tr');
+        const accommodationsCount = test.accommodations?.students?.length || 0;
+        
         row.innerHTML = `
-            <td>${test.title}</td>
-            <td>Module Linked</td>
-            <td>${test.questionCount || 0}</td>
-            <td>${test.duration} mins</td>
-            <td><span class="status-badge status-${test.status}">${test.status}</span></td>
+            <td><strong>${test.title || test.name || 'Untitled Test'}</strong></td>
+            <td>${test.facilitatorName || 'Unknown'}</td>
+            <td>${formatDate(test.createdAt)}</td>
             <td>
-                <button class="action-btn edit-test" onclick="editTest('${test.id}')" title="Edit">
+                <span style="font-weight: 600; color: #2c3e50;">${test.maxAttempts || 1}</span>
+            </td>
+            <td>
+                <span class="status-badge status-${test.status}">${test.status}</span>
+            </td>
+            <td>
+                <div class="visibility-toggle ${test.visible ? 'visible' : 'hidden'}" onclick="toggleTestVisibility('${test.id}', ${test.visible})">
+                    <i class="fas fa-${test.visible ? 'eye' : 'eye-slash'}"></i>
+                    <span>${test.visible ? 'Visible' : 'Hidden'}</span>
+                </div>
+            </td>
+            <td>
+                <div class="accommodations-indicator">
+                    <i class="fas fa-universal-access"></i>
+                    <span class="accommodations-count">${accommodationsCount}</span>
+                    <span>student${accommodationsCount !== 1 ? 's' : ''}</span>
+                </div>
+            </td>
+            <td>
+                <button class="action-btn" onclick="editTest('${test.id}')" title="Edit Test">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="action-btn btn-danger delete-test" onclick="deleteTest('${test.id}')" title="Delete">
+                <button class="action-btn btn-danger" onclick="deleteTest('${test.id}')" title="Delete Test">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -816,856 +818,121 @@ function displayTests() {
     });
 }
 
-async function editTest(testId) {
+function formatDate(timestamp) {
+    if (!timestamp) return 'N/A';
+    
+    let date;
+    if (timestamp.toDate) {
+        date = timestamp.toDate();
+    } else if (typeof timestamp === 'string') {
+        date = new Date(timestamp);
+    } else {
+        return 'N/A';
+    }
+    
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+async function toggleTestVisibility(testId, currentVisibility) {
     try {
-        const testDoc = await db.collection('tests').doc(testId).get();
-        if (!testDoc.exists) {
-            showNotification('Test not found', 'error');
-            return;
+        const newVisibility = !currentVisibility;
+        await db.collection('tests').doc(testId).update({
+            visible: newVisibility,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        showToast(`Test ${newVisibility ? 'shown to' : 'hidden from'} students`, 'success');
+        
+        // Update the local tests array and refresh display
+        const testIndex = tests.findIndex(t => t.id === testId);
+        if (testIndex !== -1) {
+            tests[testIndex].visible = newVisibility;
+            displayTests();
         }
-        
-        const testData = testDoc.data();
-        
-        // Pre-fill form
-        const testIdInput = document.getElementById('testId') || createHiddenInput('testId', 'testForm');
-        testIdInput.value = testId;
-        document.getElementById('testName').value = testData.title;
-        document.getElementById('testModule').value = testData.moduleId || '';
-        document.getElementById('testDuration').value = testData.duration || 60;
-        document.getElementById('testQuestions').value = testData.questionCount || 10;
-        document.getElementById('testStatus').value = testData.status || 'draft';
-        
-        await loadModulesForTest();
-        document.querySelector('#testModal .modal-title').textContent = 'Edit Test';
-        document.querySelector('#testModal .btn-primary').textContent = 'Update Test';
-        testModal.style.display = 'flex';
     } catch (error) {
-        console.error('Error loading test for edit:', error);
-        showNotification('Error loading test', 'error');
+        console.error('Error toggling test visibility:', error);
+        showToast('Error updating test visibility', 'error');
     }
 }
 
+async function editTest(testId) {
+    openTestCreation(testId);
+}
+
 async function deleteTest(testId) {
-    if (!confirm('Are you sure you want to delete this test? This action cannot be undone.')) {
+    const test = tests.find(t => t.id === testId);
+    const testName = test ? (test.title || test.name || 'this test') : 'this test';
+    
+    if (!confirm(`Are you sure you want to delete "${testName}"? This action cannot be undone.`)) {
         return;
     }
     
     try {
         await db.collection('tests').doc(testId).delete();
-        showNotification('Test deleted successfully!', 'success');
+        showToast(`Test "${testName}" deleted successfully!`, 'success');
         loadTests();
     } catch (error) {
         console.error('Error deleting test:', error);
-        showNotification('Error deleting test', 'error');
+        showToast('Error deleting test', 'error');
     }
 }
 
-// Analytics Functions
-async function loadStudents() {
-    try {
-        const snapshot = await db.collection('users')
-            .where('role', '==', 'student')
-            .get();
-        
-        students = [];
-        snapshot.forEach(doc => {
-            students.push({ id: doc.id, ...doc.data() });
-        });
-    } catch (error) {
-        console.error('Error loading students:', error);
-    }
-}
+// ENHANCED TEST CREATION MODAL FUNCTIONS
 
-async function loadTestResults() {
-    try {
-        const snapshot = await db.collection('testResults').get();
-        testResults = [];
-        snapshot.forEach(doc => {
-            testResults.push({ id: doc.id, ...doc.data() });
-        });
-    } catch (error) {
-        console.error('Error loading test results:', error);
-    }
-}
-
-async function loadAnalytics() {
-    try {
-        await Promise.all([loadStudents(), loadTestResults(), loadTests()]);
-        displayStudentResults();
-        updateAnalyticsStats();
-    } catch (error) {
-        console.error('Error loading analytics:', error);
-    }
-}
-
-function displayStudentResults() {
-    const tableBody = document.querySelector('#student-results-table tbody');
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = '';
-    
-    // Create sample student results for demonstration
-    const sampleResults = [
-        { 
-            studentName: 'Zakwe Mlamuli', 
-            studentId: '22461501', 
-            testName: 'Database Midterm',
-            score: 37, 
-            totalPoints: 40, 
-            status: 'Pass',
-            answers: [
-                { questionId: 1, isCorrect: true },
-                { questionId: 2, isCorrect: false },
-                { questionId: 3, isCorrect: true }
-            ]
-        },
-        { 
-            studentName: 'Andiswa Zondi', 
-            studentId: '22541500', 
-            testName: 'Database Midterm',
-            score: 38, 
-            totalPoints: 40, 
-            status: 'Pass',
-            answers: [
-                { questionId: 1, isCorrect: true },
-                { questionId: 2, isCorrect: true },
-                { questionId: 3, isCorrect: false }
-            ]
-        },
-        { 
-            studentName: 'Scelo Gumede', 
-            studentId: '224415603', 
-            testName: 'Programming Assignment',
-            score: 40, 
-            totalPoints: 40, 
-            status: 'Pass',
-            answers: [
-                { questionId: 1, isCorrect: true },
-                { questionId: 2, isCorrect: true },
-                { questionId: 3, isCorrect: true }
-            ]
-        }
-    ];
-    
-    sampleResults.forEach(result => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${result.studentName}</td>
-            <td>${result.studentId}</td>
-            <td>${result.score}/${result.totalPoints}</td>
-            <td><span class="status-badge status-${result.status.toLowerCase()}">${result.status}</span></td>
-            <td>
-                <button class="action-btn" onclick="viewTestDetails('${result.studentName}', '${result.testName}', ${JSON.stringify(result.answers).replace(/"/g, '&quot;')})">
-                    <i class="fas fa-eye"></i> View
-                </button>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-}
-
-function viewTestDetails(studentName, testName, answers) {
-    document.getElementById('studentName').textContent = studentName;
-    const detailsContent = document.getElementById('testDetailsContent');
-    
-    // Sample questions for demonstration
-    const sampleQuestions = [
-        { id: 1, text: "What is normalization in databases?", correctAnswer: "A" },
-        { id: 2, text: "Explain the ACID properties.", correctAnswer: "B" },
-        { id: 3, text: "What is a foreign key?", correctAnswer: "C" }
-    ];
-    
-    let detailsHtml = `<h4>Test: ${testName}</h4><div class="question-details">`;
-    
-    sampleQuestions.forEach((question, index) => {
-        const answer = answers[index];
-        const statusClass = answer.isCorrect ? 'correct' : 'incorrect';
-        const statusText = answer.isCorrect ? 'Correct' : 'Incorrect';
-        
-        detailsHtml += `
-            <div class="question-detail">
-                <h5>Question ${question.id}</h5>
-                <p>${question.text}</p>
-                <div class="answer-status ${statusClass}">
-                    <i class="fas ${answer.isCorrect ? 'fa-check-circle' : 'fa-times-circle'}"></i>
-                    ${statusText}
-                </div>
-            </div>
-        `;
-    });
-    
-    detailsHtml += '</div>';
-    detailsContent.innerHTML = detailsHtml;
-    
-    studentTestDetailsModal.style.display = 'flex';
-}
-
-function populateTestSelect() {
-    const testSelect = document.getElementById('testSelect');
-    if (!testSelect) return;
-    
-    testSelect.innerHTML = '<option value="">-- Select a Test --</option>';
-    
-    tests.forEach(test => {
-        const option = document.createElement('option');
-        option.value = test.id;
-        option.textContent = test.title;
-        testSelect.appendChild(option);
-    });
-}
-
-// Test selection handler
-document.getElementById('testSelect')?.addEventListener('change', (e) => {
-    const testId = e.target.value;
-    if (testId) {
-        displayQuestionStatistics(testId);
-    } else {
-        document.getElementById('question-stats-section').style.display = 'none';
-    }
-});
-
-function displayQuestionStatistics(testId) {
-    const questionStatsSection = document.getElementById('question-stats-section');
-    const tableBody = document.querySelector('#question-stats-table tbody');
-    
-    if (!questionStatsSection || !tableBody) return;
-    
-    // Sample question statistics
-    const sampleStats = [
-        { 
-            questionNumber: 1, 
-            questionText: "What is normalization in databases?", 
-            correct: 15, 
-            incorrect: 5,
-            successRate: 75
-        },
-        { 
-            questionNumber: 2, 
-            questionText: "Explain the ACID properties.", 
-            correct: 8, 
-            incorrect: 12,
-            successRate: 40
-        },
-        { 
-            questionNumber: 3, 
-            questionText: "What is a foreign key?", 
-            correct: 18, 
-            incorrect: 2,
-            successRate: 90
-        }
-    ];
-    
-    tableBody.innerHTML = '';
-    
-    sampleStats.forEach(stat => {
-        const row = document.createElement('tr');
-        const difficultyClass = stat.successRate >= 70 ? 'easy' : stat.successRate >= 40 ? 'medium' : 'hard';
-        
-        row.innerHTML = `
-            <td>${stat.questionNumber}</td>
-            <td>${stat.questionText}</td>
-            <td class="success-count">${stat.correct}</td>
-            <td class="fail-count">${stat.incorrect}</td>
-            <td>
-                <div class="success-rate ${difficultyClass}">
-                    ${stat.successRate}%
-                    <small class="${difficultyClass}">${difficultyClass === 'easy' ? 'Easy' : difficultyClass === 'medium' ? 'Medium' : 'Hard'}</small>
-                </div>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-    
-    questionStatsSection.style.display = 'block';
-}
-
-function updateDashboardStats() {
-    // Update stats on dashboard
-    const statCards = document.querySelectorAll('.stat-number');
-    if (statCards.length >= 4) {
-        statCards[0].textContent = modules.length;
-        statCards[1].textContent = tests.length;
-        statCards[2].textContent = students.length;
-        statCards[3].textContent = '92%'; // Static for demo
-    }
-}
-
-function updateAnalyticsStats() {
-    const statCards = document.querySelectorAll('#analytics-page .stat-number');
-    if (statCards.length >= 4) {
-        statCards[0].textContent = students.length;
-        statCards[1].textContent = '92%'; // Static for demo
-        statCards[2].textContent = '76%'; // Static for demo
-        statCards[3].textContent = tests.length;
-    }
-}
-
-// Logout functionality
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            await auth.signOut();
-            window.location.href = 'login.html';
-        } catch (error) {
-            console.error('Error signing out:', error);
-        }
-    });
-}
-
-// Enhanced notification system with better styling and animations
-function showNotification(message, type = 'info') {
-    // Remove existing notifications of the same type to prevent spam
-    const existingNotifications = document.querySelectorAll(`.notification-${type}`);
-    existingNotifications.forEach(notification => {
-        removeNotification(notification);
-    });
-
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
-        </div>
-        <button class="notification-close">&times;</button>
-    `;
-    
-    // Add to page
-    document.body.appendChild(notification);
-    
-    // Position notification
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 100);
-    
-    // Auto remove after 5 seconds (longer for errors)
-    const autoRemoveTime = type === 'error' ? 8000 : 5000;
-    setTimeout(() => {
-        removeNotification(notification);
-    }, autoRemoveTime);
-    
-    // Close button functionality
-    const closeBtn = notification.querySelector('.notification-close');
-    closeBtn.addEventListener('click', () => {
-        removeNotification(notification);
-    });
-}
-
-function removeNotification(notification) {
-    if (!notification || !notification.parentNode) return;
-    
-    notification.classList.remove('show');
-    notification.classList.add('hide');
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
-    }, 300);
-}
-
-// Enhanced search functionality for modules
-const searchInput = document.querySelector('.search-bar input');
-if (searchInput) {
-    let searchTimeout;
-    
-    searchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        
-        // Debounce search to avoid excessive filtering
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            // Get current active page
-            const activePage = document.querySelector('.page-content.active');
-            
-            if (activePage.id === 'modules-page') {
-                filterModules(searchTerm);
-            } else if (activePage.id === 'tests-page') {
-                filterTests(searchTerm);
-            }
-        }, 300);
-    });
-}
-
-function filterModules(searchTerm) {
-    const rows = document.querySelectorAll('#modules-table-body tr');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        if (row.querySelector('.no-data')) return; // Skip "no data" row
-        
-        const moduleCode = row.cells[0].textContent.toLowerCase();
-        const moduleName = row.cells[1].textContent.toLowerCase();
-        const facilitator = row.cells[4] ? row.cells[4].textContent.toLowerCase() : '';
-        
-        if (moduleCode.includes(searchTerm) || 
-            moduleName.includes(searchTerm) || 
-            facilitator.includes(searchTerm)) {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    
-    // Show/hide "no results" message
-    const tableBody = document.getElementById('modules-table-body');
-    let noResultsRow = tableBody.querySelector('.no-results');
-    
-    if (visibleCount === 0 && searchTerm.trim() !== '') {
-        if (!noResultsRow) {
-            noResultsRow = document.createElement('tr');
-            noResultsRow.className = 'no-results';
-            noResultsRow.innerHTML = '<td colspan="5" class="no-data">No modules match your search</td>';
-            tableBody.appendChild(noResultsRow);
-        }
-        noResultsRow.style.display = '';
-    } else if (noResultsRow) {
-        noResultsRow.style.display = 'none';
-    }
-}
-
-function filterTests(searchTerm) {
-    const rows = document.querySelectorAll('#tests-table-body tr');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        const testName = row.cells[0].textContent.toLowerCase();
-        const moduleName = row.cells[1].textContent.toLowerCase();
-        
-        if (testName.includes(searchTerm) || moduleName.includes(searchTerm)) {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    
-    // Show/hide "no results" message for tests
-    const tableBody = document.getElementById('tests-table-body');
-    let noResultsRow = tableBody.querySelector('.no-results');
-    
-    if (visibleCount === 0 && searchTerm.trim() !== '') {
-        if (!noResultsRow) {
-            noResultsRow = document.createElement('tr');
-            noResultsRow.className = 'no-results';
-            noResultsRow.innerHTML = '<td colspan="6" class="no-data">No tests match your search</td>';
-            tableBody.appendChild(noResultsRow);
-        }
-        noResultsRow.style.display = '';
-    } else if (noResultsRow) {
-        noResultsRow.style.display = 'none';
-    }
-}
-
-// Populate module select in upload section
-async function populateModuleSelect() {
-    const moduleSelect = document.getElementById('moduleSelect');
-    if (!moduleSelect || !auth.currentUser) return;
-    
-    try {
-        const snapshot = await db.collection('modules')
-            .where('facilitatorId', '==', auth.currentUser.uid)
-            .orderBy('name')
-            .get();
-        
-        moduleSelect.innerHTML = '<option value="">-- Select a Module --</option>';
-        
-        snapshot.forEach(doc => {
-            const module = doc.data();
-            const option = document.createElement('option');
-            option.value = doc.id;
-            option.textContent = `${module.code} - ${module.name}`;
-            moduleSelect.appendChild(option);
-        });
-        
-        if (snapshot.empty) {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No modules available - Create a module first';
-            option.disabled = true;
-            moduleSelect.appendChild(option);
-        }
-    } catch (error) {
-        console.error('Error loading modules for upload:', error);
-        showNotification('Error loading modules', 'error');
-    }
-}
-
-// Enhanced content upload functionality
-function handleContentUpload() {
-    const uploadBtn = document.querySelector('#upload-page .btn-primary');
-    if (uploadBtn) {
-        uploadBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            
-            const moduleId = document.getElementById('moduleSelect').value;
-            const title = document.getElementById('contentTitle').value.trim();
-            const type = document.getElementById('contentType').value;
-            const description = document.getElementById('contentDescription').value.trim();
-            const fileInput = document.getElementById('contentFile');
-            
-            // Validation
-            if (!moduleId) {
-                showNotification('Please select a module', 'error');
-                return;
-            }
-            
-            if (!title) {
-                showNotification('Please enter a content title', 'error');
-                return;
-            }
-            
-            if (!fileInput.files[0]) {
-                showNotification('Please select a file to upload', 'error');
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            const maxSize = 10 * 1024 * 1024; // 10MB limit
-            
-            if (file.size > maxSize) {
-                showNotification('File size must be less than 10MB', 'error');
-                return;
-            }
-            
-            try {
-                // Show upload progress
-                showNotification('Uploading content...', 'info');
-                
-                // Here you would typically upload the file to Firebase Storage
-                // For now, we'll simulate the upload and save metadata to Firestore
-                const contentData = {
-                    title: title,
-                    type: type,
-                    description: description,
-                    moduleId: moduleId,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    facilitatorId: auth.currentUser.uid,
-                    facilitatorName: currentUser.name || currentUser.email,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                // Save to Firestore
-                await db.collection('moduleContent').add(contentData);
-                
-                showNotification('Content uploaded successfully!', 'success');
-                
-                // Clear the form
-                document.getElementById('moduleSelect').value = '';
-                document.getElementById('contentTitle').value = '';
-                document.getElementById('contentDescription').value = '';
-                document.getElementById('contentFile').value = '';
-                document.getElementById('contentType').value = 'lecture';
-                
-            } catch (error) {
-                console.error('Error uploading content:', error);
-                showNotification('Error uploading content. Please try again.', 'error');
-            }
-        });
-    }
-}
-
-// Load module select when upload page is accessed
-document.querySelector('.nav-item[data-page="upload"]')?.addEventListener('click', () => {
-    setTimeout(populateModuleSelect, 100);
-});
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
-    // Set initial page if needed
-    const dashboardPage = document.getElementById('dashboard-page');
-    if (dashboardPage) {
-        dashboardPage.classList.add('active');
-    }
-    
-    // Initialize dashboard when the page loads
-    initializeDashboard();
-    
-    // Initialize content upload
-    handleContentUpload();
-    
-    // Add notification styles and other enhancements
-    addNotificationStyles();
-});
-
-// Function to initialize dashboard
-function initializeDashboard() {
-    // Clear any hardcoded module content immediately
-    const modulesGrid = document.querySelector('.courses-grid');
-    if (modulesGrid) {
-        // Clear existing hardcoded content
-        modulesGrid.innerHTML = '<div class="loading-modules">Loading your modules...</div>';
-    }
-    
-    // Wait for authentication and then display modules
-    const checkAndDisplayModules = () => {
-        if (auth.currentUser && modules !== undefined) {
-            displayModules();
-            updateDashboardStats();
-        } else {
-            // Keep checking until user is authenticated and modules are loaded
-            setTimeout(checkAndDisplayModules, 500);
-        }
-    };
-    
-    checkAndDisplayModules();
-}
-
-// Function to add notification styles
-function addNotificationStyles() {
-    if (!document.getElementById('notification-styles')) {
-        const style = document.createElement('style');
-        style.id = 'notification-styles';
-        style.textContent = `
-            .notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                border-left: 4px solid #007bff;
-                padding: 16px;
-                min-width: 300px;
-                max-width: 500px;
-                z-index: 10000;
-                transform: translateX(100%);
-                opacity: 0;
-                transition: all 0.3s ease;
-            }
-            
-            .notification.show {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            
-            .notification.hide {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            
-            .notification-success {
-                border-left-color: #28a745;
-            }
-            
-            .notification-error {
-                border-left-color: #dc3545;
-            }
-            
-            .notification-info {
-                border-left-color: #007bff;
-            }
-            
-            .notification-content {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
-            
-            .notification-content i {
-                font-size: 18px;
-            }
-            
-            .notification-success i {
-                color: #28a745;
-            }
-            
-            .notification-error i {
-                color: #dc3545;
-            }
-            
-            .notification-info i {
-                color: #007bff;
-            }
-            
-            .notification-close {
-                position: absolute;
-                top: 8px;
-                right: 12px;
-                background: none;
-                border: none;
-                font-size: 18px;
-                cursor: pointer;
-                opacity: 0.5;
-                transition: opacity 0.2s;
-            }
-            
-            .notification-close:hover {
-                opacity: 1;
-            }
-            
-            .no-data {
-                text-align: center;
-                color: #666;
-                font-style: italic;
-                padding: 20px;
-            }
-            
-            .loading-modules {
-                text-align: center;
-                color: #666;
-                padding: 40px;
-                font-style: italic;
-                grid-column: 1 / -1;
-            }
-            
-            .success-rate.easy {
-                color: #28a745;
-            }
-            
-            .success-rate.medium {
-                color: #ffc107;
-            }
-            
-            .success-rate.hard {
-                color: #dc3545;
-            }
-            
-            .success-count {
-                color: #28a745;
-                font-weight: bold;
-            }
-            
-            .fail-count {
-                color: #dc3545;
-                font-weight: bold;
-            }
-            
-            .question-details {
-                max-height: 400px;
-                overflow-y: auto;
-                padding: 10px 0;
-            }
-            
-            .question-detail {
-                margin-bottom: 20px;
-                padding: 15px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-            }
-            
-            .answer-status {
-                margin-top: 10px;
-                padding: 8px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            
-            .answer-status.correct {
-                background-color: #d4edda;
-                color: #155724;
-                border: 1px solid #c3e6cb;
-            }
-            
-            .answer-status.incorrect {
-                background-color: #f8d7da;
-                color: #721c24;
-                border: 1px solid #f5c6cb;
-            }
-            
-            .highlighted-row {
-                background-color: #fff3cd !important;
-                border: 2px solid #ffc107 !important;
-                transition: all 0.3s ease;
-            }
-            
-            .no-modules-card {
-                background: #f8f9fa;
-                border: 2px dashed #dee2e6;
-                border-radius: 12px;
-                padding: 40px;
-                text-align: center;
-                color: #6c757d;
-                grid-column: 1 / -1;
-            }
-            
-            .no-modules-card i {
-                font-size: 48px;
-                margin-bottom: 16px;
-                opacity: 0.5;
-            }
-            
-            .no-modules-card p {
-                margin: 8px 0;
-            }
-            
-            .no-modules-card .sub-text {
-                font-size: 14px;
-                opacity: 0.8;
-                margin-bottom: 20px;
-            }
-            
-            .no-modules-card .btn-primary {
-                background: #007bff;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                transition: background 0.2s;
-            }
-            
-            .no-modules-card .btn-primary:hover {
-                background: #0056b3;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// Cleanup function for when the page is unloaded
-window.addEventListener('beforeunload', () => {
-    if (modulesListener) {
-        modulesListener();
-    }
-});
-
-// Open test creation modal
 function openTestCreation(testId = null) {
     currentTestId = testId;
     questions = [];
     editingQuestionIndex = -1;
+    currentTestVisibility = false;
+    accommodatedStudents = [];
     
-    // Clear the test form
-    clearTestForm();
+    clearTestCreationForm();
+    loadModulesForAdvancedTest();
+    loadStudentsForAccommodations();
     
-    // If editing, load test data
     if (testId) {
         loadTestForEditing(testId);
     } else {
-        // Set default due date to tomorrow
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(23, 59);
         document.getElementById('dueDate').value = tomorrow.toISOString().slice(0, 16);
         
-        // Show empty state
         updateQuestionsList();
+        updateVisibilityToggle();
+        updateAccommodationsSummary();
     }
     
-    // Show the test creation modal
     document.getElementById('testCreationModal').style.display = 'flex';
 }
 
-// Close test creation modal
 function closeTestCreation() {
     document.getElementById('testCreationModal').style.display = 'none';
-    clearTestForm();
+    clearTestCreationForm();
     questions = [];
     editingQuestionIndex = -1;
     currentTestId = null;
+    currentTestVisibility = false;
+    accommodatedStudents = [];
 }
 
-// Clear test form
-function clearTestForm() {
-    document.getElementById('testTitle').textContent = 'New Test';
+function clearTestCreationForm() {
+    document.getElementById('testTitleInput').value = 'New Test';
+    document.getElementById('testModuleAdvanced').value = '';
+    document.getElementById('testDurationAdvanced').value = '60';
+    document.getElementById('testStatusAdvanced').value = 'draft';
     document.getElementById('dueDate').value = '';
     document.getElementById('gradeCategory').value = 'test';
     document.getElementById('maxPoints').value = '100';
+    document.getElementById('maxAttempts').value = '1';
+    currentTestVisibility = false;
+    accommodatedStudents = [];
+    updateVisibilityToggle();
+    updateAccommodationsSummary();
     
     const questionsList = document.getElementById('questionsList');
     if (questionsList) {
@@ -1678,45 +945,260 @@ function clearTestForm() {
     }
 }
 
-// Load test for editing
+function updateVisibilityToggle() {
+    const visibilityIcon = document.getElementById('visibilityIcon');
+    const visibilityText = document.getElementById('visibilityText');
+    const visibilityToggle = document.getElementById('visibilityToggle');
+    
+    if (currentTestVisibility) {
+        visibilityIcon.className = 'fas fa-eye';
+        visibilityText.textContent = 'Visible to students';
+        visibilityToggle.classList.add('visible');
+        visibilityToggle.classList.remove('hidden');
+    } else {
+        visibilityIcon.className = 'fas fa-eye-slash';
+        visibilityText.textContent = 'Hidden from students';
+        visibilityToggle.classList.add('hidden');
+        visibilityToggle.classList.remove('visible');
+    }
+}
+
+// Add event listener for visibility toggle
+document.getElementById('visibilityToggle')?.addEventListener('click', () => {
+    currentTestVisibility = !currentTestVisibility;
+    updateVisibilityToggle();
+    showToast(`Test ${currentTestVisibility ? 'shown to' : 'hidden from'} students`, 'info', 2000);
+});
+
 async function loadTestForEditing(testId) {
     try {
         const testDoc = await db.collection('tests').doc(testId).get();
         if (!testDoc.exists) {
-            showNotification('Test not found', 'error');
+            showToast('Test not found', 'error');
             return;
         }
         
         const testData = testDoc.data();
         
-        // Verify ownership
         if (testData.facilitatorId !== auth.currentUser.uid) {
-            showNotification('You can only edit your own tests', 'error');
+            showToast('You can only edit your own tests', 'error');
             return;
         }
         
-        // Populate form fields
-        document.getElementById('testTitle').textContent = testData.title || 'Untitled Test';
+        // Populate all form fields
+        document.getElementById('testTitleInput').value = testData.title || testData.name || 'Untitled Test';
+        document.getElementById('testModuleAdvanced').value = testData.moduleId || '';
+        document.getElementById('testDurationAdvanced').value = testData.duration || 60;
+        document.getElementById('testStatusAdvanced').value = testData.status || 'draft';
         document.getElementById('dueDate').value = testData.dueDate || '';
         document.getElementById('gradeCategory').value = testData.gradeCategory || 'test';
         document.getElementById('maxPoints').value = testData.maxPoints || 100;
+        document.getElementById('maxAttempts').value = testData.maxAttempts || 1;
         
-        // Load questions
+        currentTestVisibility = testData.visible || false;
+        accommodatedStudents = testData.accommodations?.students || [];
+        
+        updateVisibilityToggle();
+        updateAccommodationsSummary();
+        
         if (testData.questions && Array.isArray(testData.questions)) {
             questions = testData.questions;
             updateQuestionsList();
         }
         
-        // Update modal title
         document.querySelector('#testCreationModal .modal-title').textContent = 'Edit Test';
         
     } catch (error) {
         console.error('Error loading test for editing:', error);
-        showNotification('Error loading test data', 'error');
+        showToast('Error loading test data', 'error');
     }
 }
 
-// Open question modal
+async function saveTest() {
+    const testTitle = document.getElementById('testTitleInput').value.trim();
+    const moduleId = document.getElementById('testModuleAdvanced').value;
+    const duration = parseInt(document.getElementById('testDurationAdvanced').value) || 60;
+    const status = document.getElementById('testStatusAdvanced').value;
+    const dueDate = document.getElementById('dueDate').value;
+    const gradeCategory = document.getElementById('gradeCategory').value;
+    const maxPoints = document.getElementById('maxPoints').value;
+    const maxAttempts = parseInt(document.getElementById('maxAttempts').value) || 1;
+    
+    if (!testTitle) {
+        showToast('Please enter a test name.', 'error');
+        return;
+    }
+    
+    if (!moduleId) {
+        showToast('Please select a module for this test.', 'error');
+        return;
+    }
+    
+    if (questions.length === 0) {
+        showToast('Please add at least one question to save the test.', 'error');
+        return;
+    }
+    
+    const testData = {
+        title: testTitle,
+        name: testTitle,
+        moduleId: moduleId,
+        duration: duration,
+        status: status,
+        dueDate: dueDate,
+        gradeCategory: gradeCategory,
+        maxPoints: parseInt(maxPoints),
+        maxAttempts: maxAttempts,
+        questions: questions,
+        totalQuestions: questions.length,
+        visible: currentTestVisibility,
+        facilitatorId: auth.currentUser.uid,
+        facilitatorName: currentUser.name || currentUser.email,
+        accommodations: {
+            students: accommodatedStudents,
+            count: accommodatedStudents.length
+        },
+        attempts: 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: currentTestId ? null : firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    try {
+        if (currentTestId) {
+            await db.collection('tests').doc(currentTestId).update(testData);
+            showToast('Test updated successfully!', 'success');
+        } else {
+            const docRef = await db.collection('tests').add(testData);
+            showToast('Test created successfully!', 'success');
+            currentTestId = docRef.id;
+        }
+        
+        closeTestCreation();
+        loadTests();
+        
+    } catch (error) {
+        console.error('Error saving test:', error);
+        showToast('Error saving test. Please try again.', 'error');
+    }
+}
+
+function cancelTest() {
+    if (questions.length > 0 || accommodatedStudents.length > 0) {
+        if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
+            closeTestCreation();
+        }
+    } else {
+        closeTestCreation();
+    }
+}
+
+// STUDENT LIMIT FUNCTIONALITY
+function updateStudentLimit() {
+    const studentLimit = document.getElementById('studentLimit').value;
+    const studentLimitIndicator = document.querySelector('.student-limit-indicator');
+    
+    if (studentLimitIndicator) {
+        const countSpan = studentLimitIndicator.querySelector('.student-limit-count');
+        if (countSpan) {
+            countSpan.textContent = studentLimit === '0' || studentLimit === '' ? '∞' : studentLimit;
+        }
+    }
+}
+
+// ACCOMMODATIONS MANAGEMENT
+async function loadStudentsForAccommodations() {
+    try {
+        const snapshot = await db.collection('users')
+            .where('role', '==', 'student')
+            .get();
+        
+        const studentsList = document.getElementById('studentsList');
+        studentsList.innerHTML = '';
+        
+        snapshot.forEach(doc => {
+            const student = doc.data();
+            const studentCheckbox = document.createElement('div');
+            studentCheckbox.className = 'student-checkbox';
+            studentCheckbox.innerHTML = `
+                <input type="checkbox" id="student-${doc.id}" value="${doc.id}" 
+                    ${accommodatedStudents.includes(doc.id) ? 'checked' : ''}>
+                <label for="student-${doc.id}">${student.name || student.email} (${student.studentId || 'No ID'})</label>
+            `;
+            studentsList.appendChild(studentCheckbox);
+        });
+        
+        // Add event listeners to checkboxes
+        document.querySelectorAll('.student-checkbox input').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const studentId = e.target.value;
+                if (e.target.checked && !accommodatedStudents.includes(studentId)) {
+                    accommodatedStudents.push(studentId);
+                } else if (!e.target.checked) {
+                    accommodatedStudents = accommodatedStudents.filter(id => id !== studentId);
+                }
+                updateAccommodationsSummary();
+                
+                // Show/hide accommodations settings based on selection
+                const accommodationsSettings = document.getElementById('accommodationsSettings');
+                accommodationsSettings.style.display = accommodatedStudents.length > 0 ? 'block' : 'none';
+            });
+        });
+        
+    } catch (error) {
+        console.error('Error loading students for accommodations:', error);
+        showToast('Error loading students', 'error');
+    }
+}
+
+function updateAccommodationsSummary() {
+    const accommodationsCount = document.getElementById('accommodationsCount');
+    if (accommodationsCount) {
+        accommodationsCount.textContent = accommodatedStudents.length;
+    }
+}
+
+function openAccommodationsModal() {
+    document.getElementById('accommodationsModal').style.display = 'flex';
+}
+
+function closeAccommodationsModal() {
+    document.getElementById('accommodationsModal').style.display = 'none';
+}
+
+function saveAccommodations() {
+    // Accommodations are already being tracked in the accommodatedStudents array
+    // and individual accommodation settings are stored in checkboxes
+    showToast('Accommodations saved successfully!', 'success');
+    closeAccommodationsModal();
+}
+
+// Add event listeners for accommodation checkboxes to show/hide details
+document.addEventListener('DOMContentLoaded', function() {
+    const accommodationCheckboxes = [
+        { checkbox: 'extraTimeEnabled', detail: 'extraTimeDetail' },
+        { checkbox: 'unlimitedAttemptsEnabled', detail: 'unlimitedAttemptsDetail' },
+        { checkbox: 'separateRoomEnabled', detail: 'separateRoomDetail' },
+        { checkbox: 'readAloudEnabled', detail: 'readAloudDetail' }
+    ];
+    
+    accommodationCheckboxes.forEach(item => {
+        const checkbox = document.getElementById(item.checkbox);
+        const detail = document.getElementById(item.detail);
+        
+        if (checkbox && detail) {
+            checkbox.addEventListener('change', (e) => {
+                detail.style.display = e.target.checked ? 'block' : 'none';
+            });
+            
+            // Initialize visibility
+            detail.style.display = checkbox.checked ? 'block' : 'none';
+        }
+    });
+});
+
+// QUESTION MANAGEMENT FUNCTIONS
+
 function openQuestionModal() {
     editingQuestionIndex = -1;
     clearQuestionForm();
@@ -1724,20 +1206,17 @@ function openQuestionModal() {
     document.getElementById('questionModal').style.display = 'flex';
 }
 
-// Close question modal
 function closeQuestionModal() {
     document.getElementById('questionModal').style.display = 'none';
     clearQuestionForm();
 }
 
-// Clear question form
 function clearQuestionForm() {
     document.getElementById('questionText').value = '';
     document.getElementById('questionPoints').value = '1';
     document.getElementById('questionType').value = 'multiple-choice';
 }
 
-// Update question form based on type
 function updateQuestionForm() {
     const questionType = document.getElementById('questionType').value;
     const answersSection = document.getElementById('answersSection');
@@ -1805,21 +1284,17 @@ function updateQuestionForm() {
     answersSection.innerHTML = answersHtml;
 }
 
-// Select correct answer for multiple choice
 function selectCorrect(index) {
-    // Clear all selections
     document.querySelectorAll('.correct-indicator').forEach((indicator, i) => {
         indicator.classList.remove('selected');
         indicator.querySelector('i').style.display = 'none';
     });
     
-    // Select the clicked one
     const selectedIndicator = document.querySelector(`[data-correct="${index}"]`);
     selectedIndicator.classList.add('selected');
     selectedIndicator.querySelector('i').style.display = 'inline';
 }
 
-// Select correct answer for true/false
 function selectTrueFalse(value) {
     document.querySelectorAll('.correct-indicator').forEach(indicator => {
         indicator.classList.remove('selected');
@@ -1831,14 +1306,13 @@ function selectTrueFalse(value) {
     selectedIndicator.querySelector('i').style.display = 'inline';
 }
 
-// Save question
 function saveQuestion() {
     const questionText = document.getElementById('questionText').value.trim();
     const questionType = document.getElementById('questionType').value;
     const points = parseFloat(document.getElementById('questionPoints').value);
     
     if (!questionText) {
-        showNotification('Please enter a question text', 'error');
+        showToast('Please enter a question text', 'error');
         return;
     }
     
@@ -1850,7 +1324,6 @@ function saveQuestion() {
         answers: []
     };
     
-    // Collect answers based on question type
     if (questionType === 'multiple-choice') {
         const answerInputs = document.querySelectorAll('.answer-input');
         const correctIndicator = document.querySelector('.correct-indicator.selected');
@@ -1865,12 +1338,12 @@ function saveQuestion() {
         });
         
         if (question.answers.length < 2) {
-            showNotification('Please provide at least 2 answer options', 'error');
+            showToast('Please provide at least 2 answer options', 'error');
             return;
         }
         
         if (!question.answers.some(a => a.correct)) {
-            showNotification('Please select the correct answer', 'error');
+            showToast('Please select the correct answer', 'error');
             return;
         }
     } else if (questionType === 'true-false') {
@@ -1888,15 +1361,16 @@ function saveQuestion() {
     
     if (editingQuestionIndex >= 0) {
         questions[editingQuestionIndex] = question;
+        showToast('Question updated successfully!', 'success');
     } else {
         questions.push(question);
+        showToast('Question added successfully!', 'success');
     }
     
     updateQuestionsList();
     closeQuestionModal();
 }
 
-// Update questions list
 function updateQuestionsList() {
     const createSection = document.getElementById('createSection');
     const questionsList = document.getElementById('questionsList');
@@ -1941,7 +1415,6 @@ function updateQuestionsList() {
             </div>
         `).join('');
         
-        // Add "Add Question" button at the end
         questionsList.innerHTML += `
             <div style="text-align: center; margin-top: 20px;">
                 <button class="add-question-btn" onclick="openQuestionModal()">
@@ -1955,7 +1428,6 @@ function updateQuestionsList() {
     questionCount.textContent = `${questions.length} question${questions.length !== 1 ? 's' : ''}`;
 }
 
-// Format question type
 function formatQuestionType(type) {
     const types = {
         'multiple-choice': 'Multiple Choice',
@@ -1966,7 +1438,6 @@ function formatQuestionType(type) {
     return types[type] || type;
 }
 
-// Edit question
 function editQuestion(index) {
     editingQuestionIndex = index;
     const question = questions[index];
@@ -1977,7 +1448,6 @@ function editQuestion(index) {
     
     updateQuestionForm();
     
-    // Pre-fill answers based on question type
     setTimeout(() => {
         if (question.type === 'multiple-choice') {
             const answerInputs = document.querySelectorAll('.answer-input');
@@ -2009,116 +1479,508 @@ function editQuestion(index) {
     document.getElementById('questionModal').style.display = 'flex';
 }
 
-// Duplicate question
 function duplicateQuestion(index) {
     const question = JSON.parse(JSON.stringify(questions[index]));
     question.id = Date.now();
     questions.splice(index + 1, 0, question);
     updateQuestionsList();
+    showToast('Question duplicated successfully!', 'success');
 }
 
-// Delete question
 function deleteQuestion(index) {
     if (confirm('Are you sure you want to delete this question?')) {
         questions.splice(index, 1);
         updateQuestionsList();
+        showToast('Question deleted successfully!', 'success');
     }
 }
 
-// Save test to Firebase
-async function saveTest() {
-    const testTitle = document.getElementById('testTitle').textContent;
-    const dueDate = document.getElementById('dueDate').value;
-    const gradeCategory = document.getElementById('gradeCategory').value;
-    const maxPoints = document.getElementById('maxPoints').value;
-    
-    if (questions.length === 0) {
-        showNotification('Please add at least one question to save the test.', 'error');
-        return;
+// ANALYTICS FUNCTIONS
+
+async function loadStudents() {
+    try {
+        const snapshot = await db.collection('users')
+            .where('role', '==', 'student')
+            .get();
+        
+        students = [];
+        snapshot.forEach(doc => {
+            students.push({ id: doc.id, ...doc.data() });
+        });
+    } catch (error) {
+        console.error('Error loading students:', error);
     }
+}
+
+async function loadTestResults() {
+    try {
+        const snapshot = await db.collection('testResults').get();
+        testResults = [];
+        snapshot.forEach(doc => {
+            testResults.push({ id: doc.id, ...doc.data() });
+        });
+    } catch (error) {
+        console.error('Error loading test results:', error);
+    }
+}
+
+async function loadAnalytics() {
+    try {
+        await Promise.all([loadStudents(), loadTestResults(), loadTests()]);
+        displayStudentResults();
+        updateAnalyticsStats();
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+    }
+}
+
+function displayStudentResults() {
+    const tableBody = document.querySelector('#student-results-table tbody');
+    if (!tableBody) return;
     
-    const testData = {
-        title: testTitle,
-        dueDate: dueDate,
-        gradeCategory: gradeCategory,
-        maxPoints: parseInt(maxPoints),
-        questions: questions,
-        totalQuestions: questions.length,
-        facilitatorId: auth.currentUser.uid,
-        facilitatorName: currentUser.name || currentUser.email,
-        createdAt: currentTestId ? null : firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    tableBody.innerHTML = '';
+    
+    const sampleResults = [
+        { 
+            studentName: 'Zakwe Mlamuli', 
+            studentId: '22461501', 
+            testName: 'Database Midterm',
+            score: 37, 
+            totalPoints: 40, 
+            status: 'Pass',
+            answers: [
+                { questionId: 1, isCorrect: true },
+                { questionId: 2, isCorrect: false },
+                { questionId: 3, isCorrect: true }
+            ]
+        },
+        { 
+            studentName: 'Andiswa Zondi', 
+            studentId: '22541500', 
+            testName: 'Database Midterm',
+            score: 38, 
+            totalPoints: 40, 
+            status: 'Pass',
+            answers: [
+                { questionId: 1, isCorrect: true },
+                { questionId: 2, isCorrect: true },
+                { questionId: 3, isCorrect: false }
+            ]
+        },
+        { 
+            studentName: 'Scelo Gumede', 
+            studentId: '224415603', 
+            testName: 'Programming Assignment',
+            score: 40, 
+            totalPoints: 40, 
+            status: 'Pass',
+            answers: [
+                { questionId: 1, isCorrect: true },
+                { questionId: 2, isCorrect: true },
+                { questionId: 3, isCorrect: true }
+            ]
+        }
+    ];
+    
+    sampleResults.forEach(result => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${result.studentName}</td>
+            <td>${result.studentId}</td>
+            <td>${result.score}/${result.totalPoints}</td>
+            <td><span class="status-badge status-${result.status.toLowerCase()}">${result.status}</span></td>
+            <td>
+                <button class="action-btn" onclick="viewTestDetails('${result.studentName}', '${result.testName}', ${JSON.stringify(result.answers).replace(/"/g, '&quot;')})">
+                    <i class="fas fa-eye"></i> View
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+function viewTestDetails(studentName, testName, answers) {
+    document.getElementById('studentName').textContent = studentName;
+    const detailsContent = document.getElementById('testDetailsContent');
+    
+    const sampleQuestions = [
+        { id: 1, text: "What is normalization in databases?", correctAnswer: "A" },
+        { id: 2, text: "Explain the ACID properties.", correctAnswer: "B" },
+        { id: 3, text: "What is a foreign key?", correctAnswer: "C" }
+    ];
+    
+    let detailsHtml = `<h4>Test: ${testName}</h4><div class="question-details">`;
+    
+    sampleQuestions.forEach((question, index) => {
+        const answer = answers[index];
+        const statusClass = answer.isCorrect ? 'correct' : 'incorrect';
+        const statusText = answer.isCorrect ? 'Correct' : 'Incorrect';
+        
+        detailsHtml += `
+            <div class="question-detail">
+                <h5>Question ${question.id}</h5>
+                <p>${question.text}</p>
+                <div class="answer-status ${statusClass}">
+                    <i class="fas ${answer.isCorrect ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                    ${statusText}
+                </div>
+            </div>
+        `;
+    });
+    
+    detailsHtml += '</div>';
+    detailsContent.innerHTML = detailsHtml;
+    
+    studentTestDetailsModal.style.display = 'flex';
+}
+
+function populateTestSelect() {
+    const testSelect = document.getElementById('testSelect');
+    if (!testSelect) return;
+    
+    testSelect.innerHTML = '<option value="">-- Select a Test --</option>';
+    
+    tests.forEach(test => {
+        const option = document.createElement('option');
+        option.value = test.id;
+        option.textContent = test.title || test.name || 'Untitled Test';
+        testSelect.appendChild(option);
+    });
+}
+
+document.getElementById('testSelect')?.addEventListener('change', (e) => {
+    const testId = e.target.value;
+    if (testId) {
+        displayQuestionStatistics(testId);
+    } else {
+        document.getElementById('question-stats-section').style.display = 'none';
+    }
+});
+
+function displayQuestionStatistics(testId) {
+    const questionStatsSection = document.getElementById('question-stats-section');
+    const tableBody = document.querySelector('#question-stats-table tbody');
+    
+    if (!questionStatsSection || !tableBody) return;
+    
+    const sampleStats = [
+        { 
+            questionNumber: 1, 
+            questionText: "What is normalization in databases?", 
+            correct: 15, 
+            incorrect: 5,
+            successRate: 75
+        },
+        { 
+            questionNumber: 2, 
+            questionText: "Explain the ACID properties.", 
+            correct: 8, 
+            incorrect: 12,
+            successRate: 40
+        },
+        { 
+            questionNumber: 3, 
+            questionText: "What is a foreign key?", 
+            correct: 18, 
+            incorrect: 2,
+            successRate: 90
+        }
+    ];
+    
+    tableBody.innerHTML = '';
+    
+    sampleStats.forEach(stat => {
+        const row = document.createElement('tr');
+        const difficultyClass = stat.successRate >= 70 ? 'easy' : stat.successRate >= 40 ? 'medium' : 'hard';
+        
+        row.innerHTML = `
+            <td>${stat.questionNumber}</td>
+            <td>${stat.questionText}</td>
+            <td class="success-count">${stat.correct}</td>
+            <td class="fail-count">${stat.incorrect}</td>
+            <td>
+                <div class="success-rate ${difficultyClass}">
+                    ${stat.successRate}%
+                    <small class="${difficultyClass}">${difficultyClass === 'easy' ? 'Easy' : difficultyClass === 'medium' ? 'Medium' : 'Hard'}</small>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+    
+    questionStatsSection.style.display = 'block';
+}
+
+function updateDashboardStats() {
+    const statCards = document.querySelectorAll('.stat-number');
+    if (statCards.length >= 4) {
+        statCards[0].textContent = modules.length;
+        statCards[1].textContent = tests.length;
+        statCards[2].textContent = students.length;
+        statCards[3].textContent = '92%';
+    }
+}
+
+function updateAnalyticsStats() {
+    const statCards = document.querySelectorAll('#analytics-page .stat-number');
+    if (statCards.length >= 4) {
+        statCards[0].textContent = students.length;
+        statCards[1].textContent = '92%';
+        statCards[2].textContent = '76%';
+        statCards[3].textContent = tests.length;
+    }
+}
+
+// LOGOUT AND OTHER UTILITY FUNCTIONS
+
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await auth.signOut();
+            window.location.href = 'index.html';
+        } catch (error) {
+            console.error('Error signing out:', error);
+            showToast('Error signing out. Please try again.', 'error');
+        }
+    });
+}
+
+// Enhanced search functionality for modules
+const searchInput = document.querySelector('.search-bar input');
+if (searchInput) {
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const activePage = document.querySelector('.page-content.active');
+            
+            if (activePage.id === 'modules-page') {
+                filterModules(searchTerm);
+            } else if (activePage.id === 'tests-page') {
+                filterTests(searchTerm);
+            }
+        }, 300);
+    });
+}
+
+function filterModules(searchTerm) {
+    const rows = document.querySelectorAll('#modules-table-body tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        if (row.querySelector('.no-data')) return;
+        
+        const moduleCode = row.cells[0].textContent.toLowerCase();
+        const moduleName = row.cells[1].textContent.toLowerCase();
+        const facilitator = row.cells[4] ? row.cells[4].textContent.toLowerCase() : '';
+        
+        if (moduleCode.includes(searchTerm) || 
+            moduleName.includes(searchTerm) || 
+            facilitator.includes(searchTerm)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    const tableBody = document.getElementById('modules-table-body');
+    let noResultsRow = tableBody.querySelector('.no-results');
+    
+    if (visibleCount === 0 && searchTerm.trim() !== '') {
+        if (!noResultsRow) {
+            noResultsRow = document.createElement('tr');
+            noResultsRow.className = 'no-results';
+            noResultsRow.innerHTML = '<td colspan="5" class="no-data">No modules match your search</td>';
+            tableBody.appendChild(noResultsRow);
+        }
+        noResultsRow.style.display = '';
+    } else if (noResultsRow) {
+        noResultsRow.style.display = 'none';
+    }
+}
+
+function filterTests(searchTerm) {
+    const rows = document.querySelectorAll('#tests-table-body tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const testName = row.cells[0].textContent.toLowerCase();
+        const moduleName = row.cells[1].textContent.toLowerCase();
+        
+        if (testName.includes(searchTerm) || moduleName.includes(searchTerm)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    const tableBody = document.getElementById('tests-table-body');
+    let noResultsRow = tableBody.querySelector('.no-results');
+    
+    if (visibleCount === 0 && searchTerm.trim() !== '') {
+        if (!noResultsRow) {
+            noResultsRow = document.createElement('tr');
+            noResultsRow.className = 'no-results';
+            noResultsRow.innerHTML = '<td colspan="8" class="no-data">No tests match your search</td>';
+            tableBody.appendChild(noResultsRow);
+        }
+        noResultsRow.style.display = '';
+    } else if (noResultsRow) {
+        noResultsRow.style.display = 'none';
+    }
+}
+
+async function populateModuleSelect() {
+    const moduleSelect = document.getElementById('moduleSelect');
+    if (!moduleSelect || !auth.currentUser) return;
     
     try {
-        if (currentTestId) {
-            // Update existing test
-            await db.collection('tests').doc(currentTestId).update(testData);
-            showNotification('Test updated successfully!', 'success');
-        } else {
-            // Create new test
-            const docRef = await db.collection('tests').add(testData);
-            showNotification('Test created successfully!', 'success');
-            currentTestId = docRef.id;
+        const snapshot = await db.collection('modules')
+            .where('facilitatorId', '==', auth.currentUser.uid)
+            .orderBy('name')
+            .get();
+        
+        moduleSelect.innerHTML = '<option value="">-- Select a Module --</option>';
+        
+        snapshot.forEach(doc => {
+            const module = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = `${module.code} - ${module.name}`;
+            moduleSelect.appendChild(option);
+        });
+        
+        if (snapshot.empty) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No modules available - Create a module first';
+            option.disabled = true;
+            moduleSelect.appendChild(option);
         }
-        
-        // Close the modal and refresh the tests list
-        closeTestCreation();
-        loadTests();
-        
     } catch (error) {
-        console.error('Error saving test:', error);
-        showNotification('Error saving test. Please try again.', 'error');
+        console.error('Error loading modules for upload:', error);
+        showToast('Error loading modules', 'error');
     }
 }
 
-// Cancel test creation
-function cancelTest() {
-    if (questions.length > 0) {
-        if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
-            closeTestCreation();
-        }
-    } else {
-        closeTestCreation();
-    }
-}
-
-// Initialize test creation modal
-function initTestCreationModal() {
-    // Close modal when clicking outside
-    document.getElementById('testCreationModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeTestCreation();
-        }
-    });
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeQuestionModal();
-            closeTestCreation();
-        }
-        if (e.ctrlKey && e.key === 's') {
+function handleContentUpload() {
+    const uploadBtn = document.querySelector('#upload-page .btn-primary');
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            saveTest();
-        }
-    });
+            
+            const moduleId = document.getElementById('moduleSelect').value;
+            const title = document.getElementById('contentTitle').value.trim();
+            const type = document.getElementById('contentType').value;
+            const description = document.getElementById('contentDescription').value.trim();
+            const fileInput = document.getElementById('contentFile');
+            
+            if (!moduleId) {
+                showToast('Please select a module', 'error');
+                return;
+            }
+            
+            if (!title) {
+                showToast('Please enter a content title', 'error');
+                return;
+            }
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a file to upload', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const maxSize = 10 * 1024 * 1024;
+            
+            if (file.size > maxSize) {
+                showToast('File size must be less than 10MB', 'error');
+                return;
+            }
+            
+            try {
+                showToast('Uploading content...', 'info');
+                
+                const contentData = {
+                    title: title,
+                    type: type,
+                    description: description,
+                    moduleId: moduleId,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    facilitatorId: auth.currentUser.uid,
+                    facilitatorName: currentUser.name || currentUser.email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                await db.collection('moduleContent').add(contentData);
+                
+                showToast('Content uploaded successfully!', 'success');
+                
+                document.getElementById('moduleSelect').value = '';
+                document.getElementById('contentTitle').value = '';
+                document.getElementById('contentDescription').value = '';
+                document.getElementById('contentFile').value = '';
+                document.getElementById('contentType').value = 'lecture';
+                
+            } catch (error) {
+                console.error('Error uploading content:', error);
+                showToast('Error uploading content. Please try again.', 'error');
+            }
+        });
+    }
 }
 
-// Update the createTestBtn event listener
-if (createTestBtn) {
-    createTestBtn.addEventListener('click', () => {
-        openTestCreation();
-    });
-}
+document.querySelector('.nav-item[data-page="upload"]')?.addEventListener('click', () => {
+    setTimeout(populateModuleSelect, 100);
+});
 
-// Update the editTest function to use the new test creation modal
-async function editTest(testId) {
-    openTestCreation(testId);
-}
-// Initialize the test creation modal when the page loads
+// INITIALIZATION
+
 document.addEventListener('DOMContentLoaded', () => {
-    initTestCreationModal();
+    const dashboardPage = document.getElementById('dashboard-page');
+    if (dashboardPage) {
+        dashboardPage.classList.add('active');
+    }
+    
+    initializeDashboard();
+    handleContentUpload();
+    
+    // Add event listener for student limit input
+    const studentLimitInput = document.getElementById('studentLimit');
+    if (studentLimitInput) {
+        studentLimitInput.addEventListener('input', updateStudentLimit);
+    }
+});
+
+function initializeDashboard() {
+    const modulesGrid = document.querySelector('.courses-grid');
+    if (modulesGrid) {
+        modulesGrid.innerHTML = '<div class="loading-modules">Loading your modules...</div>';
+    }
+    
+    const checkAndDisplayModules = () => {
+        if (auth.currentUser && modules !== undefined) {
+            displayModules();
+            updateDashboardStats();
+        } else {
+            setTimeout(checkAndDisplayModules, 500);
+        }
+    };
+    
+    checkAndDisplayModules();
+}
+
+window.addEventListener('beforeunload', () => {
+    if (modulesListener) {
+        modulesListener();
+    }
 });
 
 // Export functions to global scope for onclick handlers
@@ -2138,3 +2000,11 @@ window.duplicateQuestion = duplicateQuestion;
 window.deleteQuestion = deleteQuestion;
 window.saveTest = saveTest;
 window.cancelTest = cancelTest;
+window.openTestCreation = openTestCreation;
+window.closeTestCreation = closeTestCreation;
+window.toggleTestVisibility = toggleTestVisibility;
+window.updateQuestionForm = updateQuestionForm;
+window.openAccommodationsModal = openAccommodationsModal;
+window.closeAccommodationsModal = closeAccommodationsModal;
+window.saveAccommodations = saveAccommodations;
+window.updateStudentLimit = updateStudentLimit;

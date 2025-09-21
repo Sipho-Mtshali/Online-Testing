@@ -219,7 +219,7 @@ function exportUsers() {
 }
 
 function viewLogs() {
-    alert('System Logs functionality - Coming Soon!\n\nThis would show:\n- User login/logout times\n- Test creation and completion logs\n- System errors and warnings\n- Performance metrics');
+    alert('System Logs functionality - Coming Soon!\n\nThis would show:\n- User index/logout times\n- Test creation and completion logs\n- System errors and warnings\n- Performance metrics');
 }
 
 // Logout functionality
