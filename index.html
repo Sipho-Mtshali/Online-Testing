@@ -3,66 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STKCollege - Login/Signup</title>
-        <!-- Firebase SDK -->
+    <title>STK College - Login</title>
+    <!-- Firebase SDK -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="logo">
-            <h1>STKCollege</h1>
-            <p>Learn, Teach, Administer</p>
+    <div class="login-container">
+        <div class="logo-section">
+            <div class="logo"></div>
+            <h1>STK College</h1>
+            <p>Attendance Management System</p>
         </div>
 
         <!-- Login Form -->
-        <div id="loginForm">
-            <div class="form-group">
-                <label for="loginEmail">Email</label>
-                <input type="email" id="loginEmail" placeholder="Enter your email">
+        <div id="loginForm" class="form-section">
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+            
+            <form id="loginFormElement">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="email" placeholder="Enter your email" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="password" placeholder="Enter your password" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">👁️</button>
+                    </div>
+                </div>
+                
+                <div class="remember-forgot">
+                    <div class="remember-me">
+                        <input type="checkbox" id="remember" name="remember">
+                        <label for="remember">Remember me</label>
+                    </div>
+                    <a href="#" class="forgot-password">Forgot Password?</a>
+                </div>
+                
+                <button type="submit" class="sign-in-btn" id="signInBtn">
+                    <span class="loading-spinner"></span>
+                    <span id="btnText">Sign In</span>
+                </button>
+            </form>
+            
+            <div class="signup-link">
+                Don't have an account? <a href="#" id="showSignup">Create Account</a>
             </div>
-            <div class="form-group">
-                <label for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" placeholder="Enter your password">
-            </div>
-            <button id="loginBtn" class="btn btn-primary">Login</button>
-            <div class="toggle-form">
-                Don't have an account? <a id="showSignup">Sign up</a>
+            
+            <div class="support-link">
+                Need help? <a href="#">Contact Support</a>
             </div>
         </div>
 
         <!-- Signup Form -->
-        <div id="signupForm" style="display: none;">
-            <div class="form-group">
-                <label for="signupName">Full Name</label>
-                <input type="text" id="signupName" placeholder="Enter your full name">
-            </div>
-            <div class="form-group">
-                <label for="signupEmail">Email</label>
-                <input type="email" id="signupEmail" placeholder="Enter your email">
-            </div>
-            <div class="form-group">
-                <label for="signupPassword">Password</label>
-                <input type="password" id="signupPassword" placeholder="Create a password">
-            </div>
-            <div class="form-group">
-                <label for="userRole">I am a</label>
-                <select id="userRole">
-                    <option value="student">Student</option>
-                    <option value="facilitator">Facilitator</option>
-                    <option value="admin">Administrator</option>
-                </select>
-            </div>
-            <button id="signupBtn" class="btn btn-primary">Create Account</button>
-            <div class="toggle-form">
-                Already have an account? <a id="showLogin">Login</a>
+        <div id="signupForm" class="form-section signup-form">
+            <div id="signupErrorMessage" class="error-message" style="display: none;"></div>
+            <div id="signupSuccessMessage" class="success-message" style="display: none;"></div>
+            
+            <form id="signupFormElement">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="fullName" placeholder="Enter your full name" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signupEmail">Email</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="signupEmail" placeholder="Enter your email" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="signupPassword" placeholder="Create a password" required>
+                        <button type="button" class="password-toggle" onclick="toggleSignupPassword()">👁️</button>
+                    </div>
+                </div>
+
+                <div class="role-selector">
+                    <label>I am a</label>
+                    <div class="role-options">
+                        <div class="role-option">
+                            <input type="radio" id="student" name="role" value="student" checked>
+                            <label for="student">Student</label>
+                        </div>
+                        <div class="role-option">
+                            <input type="radio" id="facilitator" name="role" value="facilitator">
+                            <label for="facilitator">Facilitator</label>
+                        </div>
+                        <div class="role-option">
+                            <input type="radio" id="admin" name="role" value="admin">
+                            <label for="admin">Administrator</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="sign-in-btn" id="signUpBtn">
+                    <span class="loading-spinner"></span>
+                    <span id="signupBtnText">Create Account</span>
+                </button>
+            </form>
+            
+            <div class="signup-link">
+                Already have an account? <a href="#" id="showLogin">Sign In</a>
             </div>
         </div>
-
-        <div id="errorMessage" class="error-message"></div>
-        <div id="successMessage" class="success-message"></div>
     </div>
     <script src="index.js"></script>
 </body>

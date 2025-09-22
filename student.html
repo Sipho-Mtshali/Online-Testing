@@ -1,53 +1,1495 @@
-<!-- student/student.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STKCollege Online testing</title>
-    <link rel="stylesheet" href="student.css">
+    <title>STKCollege - Student Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-brand i {
+            font-size: 2rem;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-item {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .btn-logout {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-logout:hover {
+            transform: translateY(-2px);
+            background: #ff5252;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Page Content */
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
+        /* Welcome Card */
+        .welcome-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .welcome-card h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+        }
+
+        .user-email {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-card h2 {
+            margin-bottom: 1.5rem;
+            color: #333;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Grids */
+        .courses-grid,
+        .tests-grid,
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        /* Course Cards */
+        .course-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .course-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .course-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .course-card:hover::before {
+            opacity: 1;
+        }
+
+        .course-card h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .course-card p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .course-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Test Cards */
+        .test-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .test-card:hover {
+            transform: translateY(-3px);
+            border-color: #667eea;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .test-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .test-status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-completed {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-overdue {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .test-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .test-score {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .btn-take-test {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-take-test:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-view-results {
+            background: #28a745;
+        }
+
+        .btn-view-results:hover {
+            background: #218838;
+        }
+
+        .btn-disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        /* Stat Cards */
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: #667eea;
+        }
+
+        .stat-card h3 {
+            color: #666;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        /* Test Taking Interface */
+        .test-interface {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .timer {
+            background: #ff6b6b;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .question-container {
+            margin-bottom: 2rem;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .question-number {
+            background: #667eea;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .question-points {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .question-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+
+        .answer-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .answer-option {
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .answer-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .answer-option.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .answer-radio {
+            margin-top: 0.2rem;
+        }
+
+        .answer-text {
+            flex: 1;
+            font-size: 1rem;
+        }
+
+        .test-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .btn-nav {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-prev {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-next {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-submit {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-nav:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Results Display */
+        .results-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .score-display {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #28a745;
+            margin-bottom: 1rem;
+        }
+
+        .results-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .result-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .navbar {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-menu {
+                gap: 1rem;
+            }
+            
+            .courses-grid,
+            .tests-grid,
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .test-header-info {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .test-navigation {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 24px;
+            min-width: 320px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            border-left: 4px solid #3498db;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left-color: #28a745;
+        }
+
+        .toast.error {
+            border-left-color: #dc3545;
+        }
+
+        .toast-icon {
+            font-size: 18px;
+        }
+
+        .toast.success .toast-icon {
+            color: #28a745;
+        }
+
+        .toast.error .toast-icon {
+            color: #dc3545;
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
 </head>
 <body>
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Navigation -->
     <nav class="navbar">
-        <div class="nav-brand">Student Dashboard</div>
-        <button id="logoutBtn" class="btn-logout">Logout</button>
-    </nav>
-    
-    <div class="container">
-        <div class="welcome-card">
-            <h1 id="welcomeMessage">Welcome, Student!</h1>
-            <p class="user-email" id="userEmail"></p>
+        <div class="nav-brand">
+            <i class="fas fa-graduation-cap"></i>
+            STKCollege Student Portal
         </div>
-        
-        <div class="courses-section">
-            <h2>Available Courses</h2>
-            <div class="courses-grid" id="coursesGrid">
-                <!-- Courses will be loaded here -->
+        <ul class="nav-menu">
+            <li class="nav-item active" data-page="dashboard">
+                <i class="fas fa-home"></i> Dashboard
+            </li>
+            <li class="nav-item" data-page="tests">
+                <i class="fas fa-file-alt"></i> Tests
+            </li>
+            <li class="nav-item" data-page="results">
+                <i class="fas fa-chart-bar"></i> Results
+            </li>
+        </ul>
+        <div class="user-info">
+            <span class="user-name" id="userName">Student Name</span>
+            <button id="logoutBtn" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Dashboard Page -->
+        <div class="page-content active" id="dashboard-page">
+            <div class="welcome-card">
+                <h1 id="welcomeMessage">Welcome, Student!</h1>
+                <p class="user-email" id="userEmail">student@stk.ac.za</p>
+            </div>
+            
+            <div class="section-card">
+                <h2>
+                    <i class="fas fa-chart-line"></i>
+                    Your Progress
+                </h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Tests Available</h3>
+                        <p class="stat-number" id="availableTests">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tests Completed</h3>
+                        <p class="stat-number" id="completedTests">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Score</h3>
+                        <p class="stat-number" id="averageScore">0%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Modules Enrolled</h3>
+                        <p class="stat-number" id="enrolledModules">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h2>
+                    <i class="fas fa-book-open"></i>
+                    Recent Tests
+                </h2>
+                <div class="tests-grid" id="recentTests">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading recent tests...
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="stats-section">
-            <h2>Your Progress</h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Tests Taken</h3>
-                    <p class="stat-number">8</p>
+
+        <!-- Tests Page -->
+        <div class="page-content" id="tests-page">
+            <div class="section-card">
+                <h2>
+                    <i class="fas fa-file-alt"></i>
+                    Available Tests
+                </h2>
+                <div class="tests-grid" id="allTests">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading tests...
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3>Average Score</h3>
-                    <p class="stat-number">85%</p>
+            </div>
+        </div>
+
+        <!-- Results Page -->
+        <div class="page-content" id="results-page">
+            <div class="section-card">
+                <h2>
+                    <i class="fas fa-chart-bar"></i>
+                    Test Results
+                </h2>
+                <div class="tests-grid" id="testResults">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading results...
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3>Completed Courses</h3>
-                    <p class="stat-number">3</p>
+            </div>
+        </div>
+
+        <!-- Test Taking Page -->
+        <div class="page-content" id="test-taking-page">
+            <div class="test-interface">
+                <div class="test-header-info">
+                    <div>
+                        <h1 id="testTitle">Test Title</h1>
+                        <p id="testInfo">Question 1 of 10 • 5 points</p>
+                    </div>
+                    <div class="timer" id="timer">60:00</div>
+                </div>
+
+                <div class="question-container">
+                    <div class="question-header">
+                        <span class="question-number" id="questionNumber">Question 1</span>
+                        <span class="question-points" id="questionPoints">5 points</span>
+                    </div>
+
+                    <div class="question-text" id="questionText">
+                        Loading question...
+                    </div>
+
+                    <div class="answer-options" id="answerOptions">
+                        <!-- Answer options will be populated here -->
+                    </div>
+                </div>
+
+                <div class="test-navigation">
+                    <button class="btn-nav btn-prev" id="prevBtn" onclick="previousQuestion()">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <span id="questionProgress">Question 1 of 10</span>
+                    <button class="btn-nav btn-next" id="nextBtn" onclick="nextQuestion()">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn-nav btn-submit" id="submitBtn" onclick="submitTest()" style="display: none;">
+                        <i class="fas fa-check"></i> Submit Test
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Results Page -->
+        <div class="page-content" id="test-results-page">
+            <div class="results-container">
+                <div class="results-header">
+                    <h1>Test Results</h1>
+                    <div class="score-display" id="finalScore">85%</div>
+                    <p id="resultMessage">Great job! You passed the test.</p>
+                </div>
+
+                <div class="results-details">
+                    <div class="result-item">
+                        <div class="result-label">Score</div>
+                        <div class="result-value" id="scoreValue">17/20</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Percentage</div>
+                        <div class="result-value" id="percentageValue">85%</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Time Taken</div>
+                        <div class="result-value" id="timeValue">45 min</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Status</div>
+                        <div class="result-value" id="statusValue">Passed</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="btn-nav btn-next" onclick="backToDashboard()">
+                        <i class="fas fa-home"></i> Back to Dashboard
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
-    <script src="student.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8m_iv91L2EUEc6Xsg5DJHGWTdfUcxGZY",
+            authDomain: "edutech-system.firebaseapp.com",
+            projectId: "edutech-system",
+            storageBucket: "edutech-system.firebasestorage.app",
+            messagingSenderId: "1072073327476",
+            appId: "1:1072073327476:web:5fdd0c76218a3a772ca221",
+            measurementId: "G-6M9540ZEPE"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Global variables
+        let currentUser = null;
+        let availableTests = [];
+        let userResults = [];
+        let currentTest = null;
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let testTimer = null;
+        let timeRemaining = 0;
+
+        // Toast notification system
+        function showToast(message, type = 'info', duration = 5000) {
+            const toastContainer = document.getElementById('toast-container');
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const iconMap = {
+                success: 'fas fa-check-circle',
+                error: 'fas fa-exclamation-circle',
+                info: 'fas fa-info-circle'
+            };
+            
+            toast.innerHTML = `
+                <i class="toast-icon ${iconMap[type] || iconMap.info}"></i>
+                <div class="toast-message">${message}</div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
+        }
+
+        // Authentication check
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            try {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (!userDoc.exists) {
+                    showToast('User data not found', 'error');
+                    auth.signOut();
+                    return;
+                }
+
+                const userData = userDoc.data();
+                if (userData.role !== 'student') {
+                    showToast('Access denied. Students only.', 'error');
+                    auth.signOut();
+                    return;
+                }
+
+                currentUser = { ...user, ...userData };
+                updateUserInfo();
+                loadUserData();
+                showToast('Welcome to your student portal!', 'success');
+
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                showToast('Error loading dashboard', 'error');
+            }
+        });
+
+        // Update user info in UI
+        function updateUserInfo() {
+            if (currentUser) {
+                document.getElementById('userName').textContent = currentUser.name || 'Student';
+                document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.name || 'Student'}!`;
+                document.getElementById('userEmail').textContent = currentUser.email;
+            }
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                await loadAvailableTests();
+                await loadUserResults();
+                updateDashboardStats();
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                showToast('Error loading data', 'error');
+            }
+        }
+
+        // Load available tests
+        async function loadAvailableTests() {
+            try {
+                const snapshot = await db.collection('tests')
+                    .where('visible', '==', true)
+                    .where('status', '==', 'active')
+                    .get();
+
+                availableTests = []; // <-- FIX: Reset array before populating
+                snapshot.forEach(doc => {
+                    const testData = doc.data();
+                    availableTests.push({
+                        id: doc.id,
+                        ...testData
+                    });
+                });
+
+                displayTests();
+                displayRecentTests();
+            } catch (error) {
+                console.error('Error loading tests:', error);
+                showToast('Error loading tests', 'error');
+            }
+        }
+
+        // Load user results
+        async function loadUserResults() {
+            try {
+                const snapshot = await db.collection('testResults')
+                    .where('studentId', '==', auth.currentUser.uid)
+                    .get();
+
+                userResults = [];
+                snapshot.forEach(doc => {
+                    userResults.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+
+                displayResults();
+            } catch (error) {
+                console.error('Error loading results:', error);
+                showToast('Error loading results', 'error');
+            }
+        }
+
+        // Display tests
+        function displayTests() {
+            const testsGrid = document.getElementById('allTests');
+            testsGrid.innerHTML = '';
+
+            if (availableTests.length === 0) {
+                testsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-file-alt"></i>
+                        <h3>No Tests Available</h3>
+                        <p>There are currently no tests available for you to take.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            availableTests.forEach(test => {
+                const userResult = userResults.find(r => r.testId === test.id);
+                const isCompleted = !!userResult;
+                const canTakeTest = !isCompleted || (test.maxAttempts > 1 && (!userResult?.attempts || userResult.attempts < test.maxAttempts));
+
+                const testCard = document.createElement('div');
+                testCard.className = 'test-card';
+
+                let statusHtml = '';
+                let buttonHtml = '';
+
+                if (isCompleted && !canTakeTest) {
+                    statusHtml = '<span class="test-status status-completed">Completed</span>';
+                    buttonHtml = `
+                        <button class="btn-take-test btn-view-results" onclick="viewTestResult('${test.id}')">
+                            <i class="fas fa-chart-bar"></i> View Results
+                        </button>
+                    `;
+                } else if (canTakeTest) {
+                    statusHtml = '<span class="test-status status-available">Available</span>';
+                    buttonHtml = `
+                        <button class="btn-take-test" onclick="startTest('${test.id}')">
+                            <i class="fas fa-play"></i> ${isCompleted ? 'Retake Test' : 'Take Test'}
+                        </button>
+                    `;
+                } else {
+                    statusHtml = '<span class="test-status status-overdue">Unavailable</span>';
+                    buttonHtml = `
+                        <button class="btn-take-test btn-disabled" disabled>
+                            <i class="fas fa-lock"></i> Unavailable
+                        </button>
+                    `;
+                }
+
+                testCard.innerHTML = `
+                    <div class="test-header">
+                        <div class="test-title">${test.title || test.name}</div>
+                        ${statusHtml}
+                    </div>
+                    <div class="test-info">
+                        <span><i class="fas fa-questions"></i> ${test.totalQuestions || (test.questions ? test.questions.length : 0)} questions</span>
+                        <span><i class="fas fa-clock"></i> ${test.duration || 60} minutes</span>
+                        <span><i class="fas fa-star"></i> ${test.maxPoints || 100} points</span>
+                    </div>
+                    ${userResult ? `
+                        <div class="test-score">
+                            Last Score: ${userResult.score}/${userResult.totalPoints} (${Math.round((userResult.score / userResult.totalPoints) * 100)}%)
+                        </div>
+                    ` : ''}
+                    ${buttonHtml}
+                `;
+
+                testsGrid.appendChild(testCard);
+            });
+        }
+
+        // Display recent tests on dashboard
+        function displayRecentTests() {
+            const recentTestsGrid = document.getElementById('recentTests');
+            const recentTests = availableTests.slice(0, 3);
+            
+            recentTestsGrid.innerHTML = '';
+
+            if (recentTests.length === 0) {
+                recentTestsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-file-alt"></i>
+                        <h3>No Recent Tests</h3>
+                        <p>No tests available at the moment.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            recentTests.forEach(test => {
+                const userResult = userResults.find(r => r.testId === test.id);
+                const isCompleted = !!userResult;
+                
+                const testCard = document.createElement('div');
+                testCard.className = 'test-card';
+                
+                testCard.innerHTML = `
+                    <div class="test-header">
+                        <div class="test-title">${test.title || test.name}</div>
+                        <span class="test-status ${isCompleted ? 'status-completed' : 'status-available'}">
+                            ${isCompleted ? 'Completed' : 'Available'}
+                        </span>
+                    </div>
+                    <div class="test-info">
+                        <span><i class="fas fa-questions"></i> ${test.totalQuestions || 0} questions</span>
+                        <span><i class="fas fa-clock"></i> ${test.duration || 60} minutes</span>
+                    </div>
+                    ${userResult ? `
+                        <div class="test-score">
+                            Score: ${Math.round((userResult.score / userResult.totalPoints) * 100)}%
+                        </div>
+                    ` : ''}
+                    <button class="btn-take-test ${isCompleted ? 'btn-view-results' : ''}" 
+                            onclick="${isCompleted ? `viewTestResult('${test.id}')` : `startTest('${test.id}')`}">
+                        <i class="fas fa-${isCompleted ? 'chart-bar' : 'play'}"></i> 
+                        ${isCompleted ? 'View Results' : 'Take Test'}
+                    </button>
+                `;
+                
+                recentTestsGrid.appendChild(testCard);
+            });
+        }
+
+        // Display results page
+        function displayResults() {
+            const resultsGrid = document.getElementById('testResults');
+            resultsGrid.innerHTML = '';
+
+            if (userResults.length === 0) {
+                resultsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-chart-bar"></i>
+                        <h3>No Results Yet</h3>
+                        <p>You haven't completed any tests yet. Take a test to see your results here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            userResults.forEach(result => {
+                const test = availableTests.find(t => t.id === result.testId);
+                const percentage = Math.round((result.score / result.totalPoints) * 100);
+                
+                const resultCard = document.createElement('div');
+                resultCard.className = 'test-card';
+                
+                resultCard.innerHTML = `
+                    <div class="test-header">
+                        <div class="test-title">${test?.title || result.testName || 'Unknown Test'}</div>
+                        <span class="test-status ${percentage >= 60 ? 'status-completed' : 'status-overdue'}">
+                            ${percentage >= 60 ? 'Passed' : 'Failed'}
+                        </span>
+                    </div>
+                    <div class="test-info">
+                        <span><i class="fas fa-calendar"></i> ${formatDate(result.completedAt)}</span>
+                        <span><i class="fas fa-clock"></i> ${result.timeTaken || 'N/A'}</span>
+                    </div>
+                    <div class="test-score">
+                        ${result.score}/${result.totalPoints} (${percentage}%)
+                    </div>
+                    <button class="btn-take-test btn-view-results" onclick="viewDetailedResult('${result.id}')">
+                        <i class="fas fa-eye"></i> View Details
+                    </button>
+                `;
+                
+                resultsGrid.appendChild(resultCard);
+            });
+        }
+
+        // Update dashboard statistics
+        function updateDashboardStats() {
+            const availableCount = availableTests.filter(test => {
+                const userResult = userResults.find(r => r.testId === test.id);
+                return !userResult || (test.maxAttempts > 1 && (!userResult.attempts || userResult.attempts < test.maxAttempts));
+            }).length;
+
+            const completedCount = userResults.length;
+            
+            const totalScore = userResults.reduce((sum, result) => {
+                return sum + (result.score / result.totalPoints * 100);
+            }, 0);
+            const averageScore = userResults.length > 0 ? Math.round(totalScore / userResults.length) : 0;
+
+            const enrolledModulesCount = new Set(availableTests.map(test => test.moduleId)).size;
+
+            document.getElementById('availableTests').textContent = availableCount;
+            document.getElementById('completedTests').textContent = completedCount;
+            document.getElementById('averageScore').textContent = `${averageScore}%`;
+            document.getElementById('enrolledModules').textContent = enrolledModulesCount;
+        }
+
+        // Start taking a test
+        async function startTest(testId) {
+            try {
+                const testDoc = await db.collection('tests').doc(testId).get();
+                if (!testDoc.exists) {
+                    showToast('Test not found', 'error');
+                    return;
+                }
+
+                currentTest = { id: testId, ...testDoc.data() };
+                currentQuestionIndex = 0;
+                userAnswers = {};
+                
+                // Set timer
+                timeRemaining = (currentTest.duration || 60) * 60; // Convert to seconds
+                
+                showPage('test-taking');
+                displayCurrentQuestion();
+                startTimer();
+                
+                showToast('Test started. Good luck!', 'success');
+            } catch (error) {
+                console.error('Error starting test:', error);
+                showToast('Error starting test', 'error');
+            }
+        }
+
+        // Display current question
+        function displayCurrentQuestion() {
+            if (!currentTest || !currentTest.questions) return;
+
+            const question = currentTest.questions[currentQuestionIndex];
+            const totalQuestions = currentTest.questions.length;
+
+            document.getElementById('testTitle').textContent = currentTest.title || currentTest.name;
+            document.getElementById('testInfo').textContent = `Question ${currentQuestionIndex + 1} of ${totalQuestions} • ${question.points || 1} point${(question.points || 1) !== 1 ? 's' : ''}`;
+            document.getElementById('questionNumber').textContent = `Question ${currentQuestionIndex + 1}`;
+            document.getElementById('questionPoints').textContent = `${question.points || 1} point${(question.points || 1) !== 1 ? 's' : ''}`;
+            document.getElementById('questionText').textContent = question.text;
+            document.getElementById('questionProgress').textContent = `Question ${currentQuestionIndex + 1} of ${totalQuestions}`;
+
+            // Display answer options
+            const optionsContainer = document.getElementById('answerOptions');
+            optionsContainer.innerHTML = '';
+
+            if (question.type === 'multiple-choice') {
+                question.answers.forEach((answer, index) => {
+                    const option = document.createElement('div');
+                    option.className = 'answer-option';
+                    option.onclick = () => selectAnswer(index);
+                    
+                    const isSelected = userAnswers[currentQuestionIndex] === index;
+                    if (isSelected) {
+                        option.classList.add('selected');
+                    }
+
+                    option.innerHTML = `
+                        <input type="radio" name="answer" value="${index}" ${isSelected ? 'checked' : ''} class="answer-radio">
+                        <span class="answer-text">${answer.text}</span>
+                    `;
+                    
+                    optionsContainer.appendChild(option);
+                });
+            } else if (question.type === 'true-false') {
+                const trueOption = document.createElement('div');
+                trueOption.className = 'answer-option';
+                trueOption.onclick = () => selectAnswer(0);
+                if (userAnswers[currentQuestionIndex] === 0) {
+                    trueOption.classList.add('selected');
+                }
+                trueOption.innerHTML = `
+                    <input type="radio" name="answer" value="0" ${userAnswers[currentQuestionIndex] === 0 ? 'checked' : ''} class="answer-radio">
+                    <span class="answer-text">True</span>
+                `;
+                
+                const falseOption = document.createElement('div');
+                falseOption.className = 'answer-option';
+                falseOption.onclick = () => selectAnswer(1);
+                if (userAnswers[currentQuestionIndex] === 1) {
+                    falseOption.classList.add('selected');
+                }
+                falseOption.innerHTML = `
+                    <input type="radio" name="answer" value="1" ${userAnswers[currentQuestionIndex] === 1 ? 'checked' : ''} class="answer-radio">
+                    <span class="answer-text">False</span>
+                `;
+                
+                optionsContainer.appendChild(trueOption);
+                optionsContainer.appendChild(falseOption);
+            }
+
+            // Update navigation buttons
+            document.getElementById('prevBtn').style.display = currentQuestionIndex === 0 ? 'none' : 'inline-flex';
+            document.getElementById('nextBtn').style.display = currentQuestionIndex === totalQuestions - 1 ? 'none' : 'inline-flex';
+            document.getElementById('submitBtn').style.display = currentQuestionIndex === totalQuestions - 1 ? 'inline-flex' : 'none';
+        }
+
+        // Select answer
+        function selectAnswer(answerIndex) {
+            userAnswers[currentQuestionIndex] = answerIndex;
+            
+            // Update UI
+            document.querySelectorAll('.answer-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            document.querySelectorAll('.answer-option')[answerIndex].classList.add('selected');
+            document.querySelectorAll('input[name="answer"]')[answerIndex].checked = true;
+        }
+
+        // Navigation functions
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                displayCurrentQuestion();
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < currentTest.questions.length - 1) {
+                currentQuestionIndex++;
+                displayCurrentQuestion();
+            }
+        }
+
+        // Start timer
+        function startTimer() {
+            testTimer = setInterval(() => {
+                timeRemaining--;
+                
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+                
+                document.getElementById('timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(testTimer);
+                    showToast('Time is up! Submitting test automatically.', 'info');
+                    submitTest();
+                }
+            }, 1000);
+        }
+
+        // Submit test
+        async function submitTest() {
+            try {
+                if (testTimer) {
+                    clearInterval(testTimer);
+                }
+
+                // Calculate score
+                let score = 0;
+                let totalPoints = 0;
+                
+                currentTest.questions.forEach((question, index) => {
+                    totalPoints += question.points || 1;
+                    
+                    const userAnswer = userAnswers[index];
+                    if (userAnswer !== undefined) {
+                        if (question.type === 'multiple-choice') {
+                            const correctAnswer = question.answers.find(a => a.correct);
+                            const correctIndex = question.answers.indexOf(correctAnswer);
+                            if (userAnswer === correctIndex) {
+                                score += question.points || 1;
+                            }
+                        } else if (question.type === 'true-false') {
+                            const correctAnswer = question.answers.find(a => a.correct);
+                            const isTrue = correctAnswer.text === 'True';
+                            if ((userAnswer === 0 && isTrue) || (userAnswer === 1 && !isTrue)) {
+                                score += question.points || 1;
+                            }
+                        }
+                    }
+                });
+
+                // Save result to database
+                const resultData = {
+                    testId: currentTest.id,
+                    testName: currentTest.title || currentTest.name,
+                    studentId: auth.currentUser.uid,
+                    studentName: currentUser.name,
+                    studentEmail: currentUser.email,
+                    score: score,
+                    totalPoints: totalPoints,
+                    answers: userAnswers,
+                    completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    timeTaken: formatTime((currentTest.duration * 60) - timeRemaining),
+                    percentage: Math.round((score / totalPoints) * 100)
+                };
+
+                await db.collection('testResults').add(resultData);
+
+                // Show results
+                showTestResults(score, totalPoints, (currentTest.duration * 60) - timeRemaining);
+                
+                // Reload data
+                await loadUserData();
+
+            } catch (error) {
+                console.error('Error submitting test:', error);
+                showToast('Error submitting test', 'error');
+            }
+        }
+
+        // Show test results
+        function showTestResults(score, totalPoints, timeTaken) {
+            const percentage = Math.round((score / totalPoints) * 100);
+            const passed = percentage >= 60;
+
+            document.getElementById('finalScore').textContent = `${percentage}%`;
+            document.getElementById('resultMessage').textContent = 
+                passed ? 'Congratulations! You passed the test.' : 'You did not pass this time. Keep studying and try again.';
+            document.getElementById('scoreValue').textContent = `${score}/${totalPoints}`;
+            document.getElementById('percentageValue').textContent = `${percentage}%`;
+            document.getElementById('timeValue').textContent = formatTime(timeTaken);
+            document.getElementById('statusValue').textContent = passed ? 'Passed' : 'Failed';
+
+            showPage('test-results');
+            showToast(`Test completed! You scored ${percentage}%`, passed ? 'success' : 'error');
+        }
+
+        // View test result
+        function viewTestResult(testId) {
+            const result = userResults.find(r => r.testId === testId);
+            if (result) {
+                showTestResults(result.score, result.totalPoints, 0);
+            }
+        }
+
+        // View detailed result (placeholder for future implementation)
+        function viewDetailedResult(resultId) {
+            showToast('Detailed results view coming soon!', 'info');
+        }
+
+        // Utility functions
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            
+            let date;
+            if (timestamp.toDate) {
+                date = timestamp.toDate();
+            } else {
+                date = new Date(timestamp);
+            }
+            
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes} min ${remainingSeconds} sec`;
+        }
+
+        function backToDashboard() {
+            showPage('dashboard');
+        }
+
+        // Navigation system
+        const navItems = document.querySelectorAll('.nav-item');
+        const pageContents = document.querySelectorAll('.page-content');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const page = item.getAttribute('data-page');
+                showPage(page);
+                
+                // Update active nav item
+                navItems.forEach(navItem => navItem.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
+
+        function showPage(pageId) {
+            pageContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === `${pageId}-page`) {
+                    content.classList.add('active');
+                }
+            });
+        }
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+                showToast('Error signing out', 'error');
+            }
+        });
+
+        // Global functions for onclick handlers
+        window.startTest = startTest;
+        window.viewTestResult = viewTestResult;
+        window.viewDetailedResult = viewDetailedResult;
+        window.selectAnswer = selectAnswer;
+        window.previousQuestion = previousQuestion;
+        window.nextQuestion = nextQuestion;
+        window.submitTest = submitTest;
+        window.backToDashboard = backToDashboard;
+    </script>
 </body>
 </html>

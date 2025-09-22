@@ -1,13 +1,13 @@
-        // Firebase Configuration - Replace with your actual config
-const firebaseConfig = {
-  apiKey: "AIzaSyC8m_iv91L2EUEc6Xsg5DJHGWTdfUcxGZY",
-  authDomain: "edutech-system.firebaseapp.com",
-  projectId: "edutech-system",
-  storageBucket: "edutech-system.firebasestorage.app",
-  messagingSenderId: "1072073327476",
-  appId: "1:1072073327476:web:5fdd0c76218a3a772ca221",
-  measurementId: "G-6M9540ZEPE"
-};
+       // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8m_iv91L2EUEc6Xsg5DJHGWTdfUcxGZY",
+            authDomain: "edutech-system.firebaseapp.com",
+            projectId: "edutech-system",
+            storageBucket: "edutech-system.firebasestorage.app",
+            messagingSenderId: "1072073327476",
+            appId: "1:1072073327476:web:5fdd0c76218a3a772ca221",
+            measurementId: "G-6M9540ZEPE"
+        };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -19,99 +19,221 @@ const firebaseConfig = {
         const signupForm = document.getElementById('signupForm');
         const showSignupBtn = document.getElementById('showSignup');
         const showLoginBtn = document.getElementById('showLogin');
-        const loginBtn = document.getElementById('loginBtn');
-        const signupBtn = document.getElementById('signupBtn');
+        const loginFormElement = document.getElementById('loginFormElement');
+        const signupFormElement = document.getElementById('signupFormElement');
+        const signInBtn = document.getElementById('signInBtn');
+        const signUpBtn = document.getElementById('signUpBtn');
+
+        // Message elements
         const errorMessage = document.getElementById('errorMessage');
         const successMessage = document.getElementById('successMessage');
+        const signupErrorMessage = document.getElementById('signupErrorMessage');
+        const signupSuccessMessage = document.getElementById('signupSuccessMessage');
 
-        // Toggle between login and signup forms
-        showSignupBtn.addEventListener('click', () => {
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = passwordInput.nextElementSibling;
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+
+        function toggleSignupPassword() {
+            const passwordInput = document.getElementById('signupPassword');
+            const toggleBtn = passwordInput.nextElementSibling;
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+
+        // Toggle forms
+        showSignupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             loginForm.style.display = 'none';
             signupForm.style.display = 'block';
             clearMessages();
         });
 
-        showLoginBtn.addEventListener('click', () => {
+        showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             signupForm.style.display = 'none';
             loginForm.style.display = 'block';
             clearMessages();
         });
 
-        // Clear error/success messages
+        // Clear messages
         function clearMessages() {
-            errorMessage.textContent = '';
-            successMessage.textContent = '';
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            signupErrorMessage.style.display = 'none';
+            signupSuccessMessage.style.display = 'none';
         }
 
-        // Show error message
-        function showError(message) {
-            errorMessage.textContent = message;
-            successMessage.textContent = '';
+        // Show messages
+        function showError(message, isSignup = false) {
+            const errorEl = isSignup ? signupErrorMessage : errorMessage;
+            const successEl = isSignup ? signupSuccessMessage : successMessage;
+            
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            successEl.style.display = 'none';
         }
 
-        // Show success message
-        function showSuccess(message) {
-            successMessage.textContent = message;
-            errorMessage.textContent = '';
+        function showSuccess(message, isSignup = false) {
+            const errorEl = isSignup ? signupErrorMessage : errorMessage;
+            const successEl = isSignup ? signupSuccessMessage : successMessage;
+            
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            errorEl.style.display = 'none';
         }
 
-        // Login function
-        loginBtn.addEventListener('click', async () => {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
+        // Loading states
+        function setLoading(isLoading, isSignup = false) {
+            const btn = isSignup ? signUpBtn : signInBtn;
+            const spinner = btn.querySelector('.loading-spinner');
+            const text = btn.querySelector(isSignup ? '#signupBtnText' : '#btnText');
+            
+            if (isLoading) {
+                btn.disabled = true;
+                spinner.style.display = 'inline-block';
+                text.textContent = isSignup ? 'Creating Account...' : 'Signing In...';
+            } else {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                text.textContent = isSignup ? 'Create Account' : 'Sign In';
+            }
+        }
+
+        // Login handler
+        loginFormElement.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
 
             if (!email || !password) {
                 showError('Please fill in all fields');
                 return;
             }
 
+            setLoading(true);
+            clearMessages();
+
             try {
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
                 const user = userCredential.user;
                 
-                // Get user role from Firestore
-                const userDoc = await db.collection('users').doc(user.uid).get();
+                // Wait a moment for Firestore to be ready
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                if (userDoc.exists) {
+                // Get user role from Firestore with retry logic
+                let userDoc;
+                let retries = 3;
+                
+                while (retries > 0) {
+                    try {
+                        userDoc = await db.collection('users').doc(user.uid).get();
+                        if (userDoc.exists) {
+                            break;
+                        }
+                        retries--;
+                        if (retries > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    } catch (error) {
+                        console.log('Retry attempt for user doc:', error);
+                        retries--;
+                        if (retries > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                }
+                
+                if (userDoc && userDoc.exists) {
                     const userData = userDoc.data();
+                    showSuccess('Login successful! Redirecting...');
                     
                     // Redirect based on role
-                    switch (userData.role) {
-                        case 'student':
-                            window.location.href = 'student.html';
-                            break;
-                        case 'facilitator':
-                            window.location.href = 'facilitator.html';
-                            break;
-                        case 'admin':
-                            window.location.href = 'admin.html';
-                            break;
-                        default:
-                            showError('Unknown user role');
-                    }
+                    setTimeout(() => {
+                        switch (userData.role) {
+                            case 'student':
+                                window.location.href = 'student.html';
+                                break;
+                            case 'facilitator':
+                                window.location.href = 'facilitator.html';
+                                break;
+                            case 'admin':
+                                window.location.href = 'admin.html';
+                                break;
+                            default:
+                                showError('Unknown user role');
+                        }
+                    }, 1500);
                 } else {
-                    showError('User data not found');
+                    showError('User data not found. Please contact support.');
                 }
+                
             } catch (error) {
                 console.error('Login error:', error);
-                showError(error.message);
+                let errorMsg = 'Login failed. Please try again.';
+                
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        errorMsg = 'No account found with this email.';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMsg = 'Incorrect password.';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMsg = 'Please enter a valid email address.';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMsg = 'Too many failed attempts. Please try again later.';
+                        break;
+                }
+                
+                showError(errorMsg);
+            } finally {
+                setLoading(false);
             }
         });
 
-        // Signup function
-        signupBtn.addEventListener('click', async () => {
-            const name = document.getElementById('signupName').value;
-            const email = document.getElementById('signupEmail').value;
+        // Signup handler
+        signupFormElement.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value;
-            const role = document.getElementById('userRole').value;
+            const role = document.querySelector('input[name="role"]:checked').value;
 
             if (!name || !email || !password) {
-                showError('Please fill in all fields');
+                showError('Please fill in all fields', true);
                 return;
             }
 
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters long', true);
+                return;
+            }
+
+            setLoading(true, true);
+            clearMessages();
+
             try {
-                // Create user with email and password
+                // Create user
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
 
@@ -123,9 +245,9 @@ const firebaseConfig = {
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                showSuccess('Account created successfully! Redirecting...');
+                showSuccess('Account created successfully! Redirecting...', true);
                 
-                // Redirect based on role after a short delay
+                // Redirect based on role
                 setTimeout(() => {
                     switch (role) {
                         case 'student':
@@ -142,35 +264,56 @@ const firebaseConfig = {
 
             } catch (error) {
                 console.error('Signup error:', error);
-                showError(error.message);
+                let errorMsg = 'Account creation failed. Please try again.';
+                
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        errorMsg = 'An account with this email already exists.';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMsg = 'Please enter a valid email address.';
+                        break;
+                    case 'auth/weak-password':
+                        errorMsg = 'Please choose a stronger password.';
+                        break;
+                }
+                
+                showError(errorMsg, true);
+            } finally {
+                setLoading(false, true);
             }
         });
 
-        // Check if user is already logged in
+        // Check authentication state (with improved error handling)
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 try {
-                    // Get user role from Firestore
+                    // Add delay to ensure Firestore is ready
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
                     const userDoc = await db.collection('users').doc(user.uid).get();
                     
                     if (userDoc.exists) {
                         const userData = userDoc.data();
                         
-                        // Redirect based on role
-                        switch (userData.role) {
-                            case 'student':
-                                window.location.href = 'student.html';
-                                break;
-                            case 'facilitator':
-                                window.location.href = 'facilitator.html';
-                                break;
-                            case 'admin':
-                                window.location.href = 'admin.html';
-                                break;
+                        // Only redirect if we're on the login page and not in the middle of login/signup process
+                        if (!signInBtn.disabled && !signUpBtn.disabled) {
+                            switch (userData.role) {
+                                case 'student':
+                                    window.location.href = 'student.html';
+                                    break;
+                                case 'facilitator':
+                                    window.location.href = 'facilitator.html';
+                                    break;
+                                case 'admin':
+                                    window.location.href = 'admin.html';
+                                    break;
+                            }
                         }
                     }
                 } catch (error) {
                     console.error('Auth state change error:', error);
+                    // Don't show error to user as this is background check
                 }
             }
         });
